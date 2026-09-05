@@ -209,11 +209,6 @@ textarea { min-height: 78px; resize: vertical; }
 .report .rline b { color: var(--red); }
 .report .rdate { text-align: right; color: #6d5533; font-size: 15px; margin-top: 14px; }
 
-body.focus .extras { display: none; }
-body.focus .board table { font-size: 30px; }
-body.focus .board th { font-size: 27px; }
-body.focus .head h1 { font-size: 38px; }
-
 /* ---------- 手机适配 ---------- */
 @media (max-width: 700px) {
   .wrap { padding: 16px 10px 72px; }
@@ -233,11 +228,7 @@ body.focus .head h1 { font-size: 38px; }
   .pct { width: 70px; }
   .report { padding: 16px 12px; }
   .report .rline { font-size: 16px; }
-  body.focus .board table { font-size: 22px; }
-  body.focus .board th { font-size: 20px; }
-  body.focus .head h1 { font-size: 30px; }
 }
-
 /* ---------- 打印（成绩单） ---------- */
 @media print {
   body { background: #fff; }

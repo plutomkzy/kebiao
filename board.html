@@ -17,15 +17,12 @@
       <div class="sub" id="clock">--</div>
     </div>
 
-    <div style="text-align:center">
-      <button class="btn small" id="focusBtn">大屏模式</button>
-    </div>
-    <div class="note">展示聚合结果 · 明细与导出请使用管理后台</div>
+    <div class="note">点击任意行可聚焦该小组</div>
 
     <div class="tblwrap">
       <table id="tbl">
         <thead>
-          <tr><th>名次</th><th>组别</th><th>学生票数</th><th>学生均分</th><th>教师分</th><th>加权总分</th><th>星级</th></tr>
+          <tr><th>名次</th><th>组别</th><th>学生票数</th><th>学生均分</th><th>教师分</th><th>加权总分</th></tr>
         </thead>
         <tbody></tbody>
       </table>
@@ -109,7 +106,6 @@ async function refresh() {
       ? r.teacher_pct + '<div style="font-size:14px;color:#5c451f">' + r.tv + '票</div>'
       : '待评';
     const weighted = r.weighted != null ? '<b>' + r.weighted + '</b>' : '待教师打分';
-    const star = r.student_pct != null ? (r.student_pct / 20).toFixed(1) + '星' : '—';
     const pctbar = r.student_pct != null
       ? '<div class="pct"><i style="width:' + r.student_pct + '%"></i></div>' : '';
     tr.innerHTML =
@@ -117,8 +113,7 @@ async function refresh() {
       '<td>' + r.sv + '</td>' +
       '<td>' + (r.student_pct != null ? r.student_pct : '—') + pctbar + '</td>' +
       '<td>' + teacher + '</td>' +
-      '<td>' + weighted + '</td>' +
-      '<td>' + star + '</td>';
+      '<td>' + weighted + '</td>';
     tr.onclick = () => { focusKey = (focusKey === r.g + '-' + r.s) ? null : r.g + '-' + r.s; refresh(); };
     tb.appendChild(tr);
   });
@@ -164,10 +159,6 @@ function exportCsv() {
 async function init() {
   refresh();
   setInterval(refresh, 3000);
-  $('#focusBtn').onclick = () => {
-    document.body.classList.toggle('focus');
-    $('#focusBtn').textContent = document.body.classList.contains('focus') ? '退出大屏' : '大屏模式';
-  };
 }
 init();
 </script>
