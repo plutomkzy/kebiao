@@ -19,10 +19,8 @@
 
     <div style="text-align:center">
       <button class="btn small" id="focusBtn">大屏模式</button>
-      <button class="btn small" id="csvBtn">导出数据</button>
-      <button class="btn small ghost" id="resetBtn">清空数据</button>
     </div>
-    <div class="note">点击任意行可聚焦该小组</div>
+    <div class="note">展示聚合结果 · 明细与导出请使用管理后台</div>
 
     <div class="tblwrap">
       <table id="tbl">
@@ -169,14 +167,6 @@ async function init() {
   $('#focusBtn').onclick = () => {
     document.body.classList.toggle('focus');
     $('#focusBtn').textContent = document.body.classList.contains('focus') ? '退出大屏' : '大屏模式';
-  };
-  $('#csvBtn').onclick = exportCsv;
-  $('#resetBtn').onclick = async () => {
-    const pw = prompt('清空全部评分数据？请输入教师口令确认：');
-    if (!pw) return;
-    const j = await rpc('reset_votes', { p_password: pw });
-    alert(j.ok ? j.msg : (j.msg || j.message || '操作失败'));
-    refresh();
   };
 }
 init();
