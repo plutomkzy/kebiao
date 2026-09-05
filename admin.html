@@ -31,7 +31,7 @@
         <h1>管理后台 <span class="badge">仅管理员</span></h1>
         <div class="sub" id="clock">--</div>
       </div>
-      <p class="note">个人实践分折算：小组加权分 × 0.4（实践作业 40 分制）</p>
+      <p class="note">成绩以百分制加权总分为准（学生 70% + 教师 30%）</p>
       <div class="statchips" id="chips"></div>
 
       <div style="text-align:center">
@@ -45,7 +45,7 @@
       <div class="tblwrap">
         <table id="tbl">
           <thead>
-            <tr><th>组别</th><th>学生票</th><th>学生均分</th><th>教师分</th><th>加权总分</th><th>折算40分制</th><th>排名</th><th>明细</th></tr>
+            <tr><th>组别</th><th>学生票</th><th>学生均分</th><th>教师分</th><th>加权总分</th><th>排名</th><th>明细</th></tr>
           </thead>
           <tbody></tbody>
         </table>
@@ -53,7 +53,7 @@
 
       <div class="report print-area" id="report" style="display:none">
         <h2>《语文课程标准》小组讲解 · 成绩单</h2>
-        <p class="note" style="margin:0 0 10px">各组为 2 人小组；组内成员按本组成绩计分（实践作业折算分 = 加权分 × 0.4）</p>
+        <p class="note" style="margin:0 0 10px">各组为 2 人小组；组内成员按本组成绩计分（百分制加权总分）</p>
         <div id="reportBody"></div>
         <div class="rdate" id="reportDate"></div>
       </div>
@@ -108,7 +108,6 @@ function calc(votes) {
     d.teacher_pct = d.tv ? Math.round(d.ts / d.tv * 10) / 10 : null;
     d.weighted = (d.student_pct != null && d.teacher_pct != null)
       ? Math.round((d.student_pct * CFG.STUDENT_WEIGHT + d.teacher_pct * CFG.TEACHER_WEIGHT) * 10) / 10 : null;
-    d.converted = d.weighted != null ? Math.round(d.weighted * 0.4 * 10) / 10 : null;
     return d;
   });
   rows.sort((a, b) => {
@@ -151,7 +150,6 @@ async function refresh() {
       '<td>' + (r.student_pct != null ? r.student_pct : '—') + pctbar + '</td>' +
       '<td>' + teacher + '</td>' +
       '<td>' + (r.weighted != null ? '<b>' + r.weighted + '</b>' : '待教师打分') + '</td>' +
-      '<td>' + (r.converted != null ? '<b>' + r.converted + '</b>' : '—') + '</td>' +
       '<td>' + rank + '</td>' +
       '<td><button class="dbtn">' + (r.votes.length ? '展开' : '无') + '</button></td>';
     tb.appendChild(tr);
@@ -182,7 +180,7 @@ function buildReport() {
   $('#reportBody').innerHTML = done.map((r, i) =>
     '<div class="rline">第' + r.g + '大组·第' + r.s + '小组 —— 学生均分 <b>' + r.student_pct +
     '</b> · 教师分 <b>' + r.teacher_pct + '</b> · 加权总分 <b>' + r.weighted +
-    '</b> · 个人折算（40分制）<b>' + r.converted + '</b>（第' + (i + 1) + '名）</div>').join('') +
+    '</b>（第' + (i + 1) + '名）</div>').join('') +
     und.map(r => '<div class="rline">第' + r.g + '大组·第' + r.s +
       '小组 —— 学生均分 ' + (r.student_pct != null ? r.student_pct : '—') +
       ' · 教师分 待评 · 暂无法出分</div>').join('');
@@ -198,7 +196,7 @@ function reportText() {
     if (r.weighted == null) return;
     n++;
     lines.push('第' + r.g + '大组·第' + r.s + '小组 —— 学生均分 ' + r.student_pct + ' · 教师分 ' +
-      r.teacher_pct + ' · 加权总分 ' + r.weighted + ' · 个人折算 ' + r.converted + '（第' + n + '名）');
+      r.teacher_pct + ' · 加权总分 ' + r.weighted + '（第' + n + '名）');
   });
   lines.push('', '统计时间：' + fmtTime(new Date().toISOString()));
   return lines.join('\n');
