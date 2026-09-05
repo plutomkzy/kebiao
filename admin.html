@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>管理后台 · 课标讲解评分</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap board">
+  <div class="panel">
+
+    <!-- 登录 -->
+    <div id="login">
+      <div class="head">
+        <span class="seal">管</span>
+        <h1>管理后台</h1>
+        <div class="sub">全量评分明细 · 成绩单 · 一键出分</div>
+      </div>
+      <input type="password" id="pw" placeholder="管理员口令" style="text-align:center;letter-spacing:4px">
+      <button class="btn primary" id="go" style="margin-top:12px">进入后台</button>
+      <div id="msg"></div>
+    </div>
+
+    <!-- 后台 -->
+    <div id="dash" style="display:none">
+      <div class="head">
+        <span class="seal">管</span>
+        <h1>管理后台 <span class="badge">仅管理员</span></h1>
+        <div class="sub" id="clock">--</div>
+      </div>
+      <div class="statchips" id="chips"></div>
+
+      <div style="text-align:center">
+        <button class="btn small primary" id="reportBtn">一键出分 · 生成成绩单</button>
+        <button class="btn small" id="copyBtn">复制成绩单</button>
+        <button class="btn small" id="printBtn">打印成绩单</button>
+        <button class="btn small" id="csvBtn">导出CSV</button>
+        <button class="btn small ghost" id="resetBtn">清空数据</button>
+      </div>
+
+      <div class="tblwrap">
+        <table id="tbl">
+          <thead>
+            <tr><th>组别</th><th>学生票</th><th>学生均分</th><th>教师分</th><th>加权总分</th><th>排名</th><th>明细</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="report print-area" id="report" style="display:none">
+        <h2>《语文课程标准》小组讲解 · 成绩单</h2>
+        <div id="reportBody"></div>
+        <div class="rdate" id="reportDate"></div>
+      </div>
+
+      <div id="details"></div>
+    </div>
+  </div>
+</div>
+<script src="config.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const CFG = window.APP_CONFIG;
+let allVotes = [];
+
+async function rpc(fn, body) {
+  const r = await fetch(CFG.SUPABASE_URL + '/rest/v1/rpc/' + fn, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: CFG.SUPABASE_ANON_KEY,
+      Authorization: 'Bearer ' + CFG.SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify(body),
+  });
+  return r.json();
+}
+async function loadVotes() {
+  const r = await fetch(CFG.SUPABASE_URL + '/rest/v1/votes?select=*&order=ts.asc', {
+    headers: { apikey: CFG.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + CFG.SUPABASE_ANON_KEY },
+  });
+  if (!r.ok) return [];
+  return r.json();
+}
+function calc(votes) {
+  const gs = {};
+  for (let g = 1; g <= CFG.GROUP_COUNT; g++) {
+    gs[g] = { g, sv: 0, ss: 0, tv: 0, ts: 0, votes: [] };
+  }
+  votes.forEach(v => {
+    const d = gs[v.grp];
+    if (!d) return;
+    const pct = v.scores.reduce((a, b) => a + b, 0) * 2;
+    if (v.role === 'student') { d.sv++; d.ss += pct; }
+    else { d.tv++; d.ts += pct; }
+    d.votes.push(v);
+  });
+  const rows = Object.values(gs).map(d => {
+    d.student_pct = d.sv ? Math.round(d.ss / d.sv * 10) / 10 : null;
+    d.teacher_pct = d.tv ? Math.round(d.ts / d.tv * 10) / 10 : null;
+    const vArr = d.votes.filter(v => v.role === 'student');
+    d.st_mean = vArr.length ? Math.round(vArr.reduce((a, v) => a + v.scores.reduce((x, y) => x + y, 0) * 2, 0) / vArr.length * 10) / 10 : null;
+    d.weighted = (d.student_pct != null && d.teacher_pct != null)
+      ? Math.round((d.student_pct * CFG.STUDENT_WEIGHT + d.teacher_pct * CFG.TEACHER_WEIGHT) * 10) / 10 : null;
+    return d;
+  });
+  rows.sort((a, b) => {
+    if (a.weighted != null && b.weighted != null) return b.weighted - a.weighted;
+    if (a.weighted != null) return -1;
+    if (b.weighted != null) return 1;
+    return (b.student_pct || 0) - (a.student_pct || 0);
+  });
+  return rows;
+}
+function fmtTime(ts) {
+  const d = new Date(ts);
+  return d.toLocaleDateString('zh-CN') + ' ' + d.toLocaleTimeString('zh-CN', { hour12: false });
+}
+async function refresh() {
+  allVotes = await loadVotes();
+  const now = new Date();
+  $('#clock').textContent = '更新于 ' + now.toLocaleTimeString('zh-CN', { hour12: false }) + ' · 共 ' + allVotes.length + ' 票';
+  const rows = calc(allVotes);
+  const st = allVotes.filter(v => v.role === 'student').length;
+  const tn = allVotes.filter(v => v.role === 'teacher').length;
+  const done = rows.filter(r => r.weighted != null).length;
+  $('#chips').innerHTML =
+    '<span class="chip">总票数 <b>' + allVotes.length + '</b></span>' +
+    '<span class="chip">学生票 <b>' + st + '</b></span>' +
+    '<span class="chip">教师票 <b>' + tn + '</b></span>' +
+    '<span class="chip">已出分 <b>' + done + '</b> / ' + CFG.GROUP_COUNT + ' 组</span>';
+
+  const tb = $('#tbl tbody');
+  tb.innerHTML = '';
+  rows.forEach((r, i) => {
+    const tr = document.createElement('tr');
+    const rank = r.weighted != null
+      ? '<span class="rank ' + (i === 0 ? 'g' : i === 1 ? 's' : i === 2 ? 'b' : '') + '">' + (i + 1) + '</span>'
+      : '—';
+    const teacher = r.teacher_pct != null ? r.teacher_pct + '（' + r.tv + '票）' : '待评';
+    const pctbar = r.student_pct != null ? '<div class="pct"><i style="width:' + r.student_pct + '%"></i></div>' : '';
+    tr.innerHTML =
+      '<td><b>第' + r.g + '组</b></td><td>' + r.sv + '</td>' +
+      '<td>' + (r.student_pct != null ? r.student_pct : '—') + pctbar + '</td>' +
+      '<td>' + teacher + '</td>' +
+      '<td>' + (r.weighted != null ? '<b>' + r.weighted + '</b>' : '待教师打分') + '</td>' +
+      '<td>' + rank + '</td>' +
+      '<td><button class="dbtn">' + (r.votes.length ? '展开' : '无') + '</button></td>';
+    tb.appendChild(tr);
+    tr.querySelector('.dbtn').onclick = () => { toggleDetail(tr, r); };
+  });
+}
+function toggleDetail(tr, r) {
+  const next = tr.nextElementSibling;
+  if (next && next.className === 'dvote') { next.remove(); tr.querySelector('.dbtn').textContent = '展开'; return; }
+  r.votes.slice().reverse().forEach(v => {
+    const d = document.createElement('div');
+    d.className = 'dvote' + (v.role === 'teacher' ? ' teacher' : '');
+    d.innerHTML =
+      '<span class="t">' + fmtTime(v.ts) + '</span>' +
+      (v.role === 'teacher' ? '师·' : '生·') +
+      (v.anonymous ? '匿名' : (v.name || '匿名')) +
+      '<span class="sc">' + v.scores.join(' ') + ' 星</span>' +
+      (v.scores.reduce((a, b) => a + b, 0) * 2) + '分' +
+      (v.comment ? '<br><span class="cm">评语：' + v.comment + '</span>' : '');
+    tr.after(d);
+  });
+  tr.querySelector('.dbtn').textContent = '收起';
+}
+function buildReport() {
+  const rows = calc(allVotes).filter(r => r.weighted != null);
+  $('#reportBody').innerHTML = rows.map((r, i) =>
+    '<div class="rline">第' + r.g + '组 —— 学生均分 <b>' + r.student_pct +
+    '</b> · 教师分 <b>' + r.teacher_pct + '</b> · 加权总分 <b>' + r.weighted +
+    '</b>（第' + (i + 1) + '名）</div>').join('');
+  const und = calc(allVotes).filter(r => r.weighted == null && (r.sv || r.tv));
+  if (und.length) {
+    $('#reportBody').innerHTML += und.map(r =>
+      '<div class="rline">第' + r.g + '组 —— 学生均分 ' + (r.student_pct != null ? r.student_pct : '—') +
+      ' · 教师分 待评 · 暂时无法出分</div>').join('');
+  }
+  $('#reportDate').textContent = '统计时间：' + fmtTime(new Date().toISOString());
+  $('#report').style.display = 'block';
+  $('#report').scrollIntoView({ behavior: 'smooth' });
+}
+function reportText() {
+  const rows = calc(allVotes);
+  const lines = ['《语文课程标准》小组讲解 · 成绩单', ''];
+  let n = 0;
+  rows.forEach(r => {
+    if (r.weighted == null) return;
+    n++;
+    lines.push('第' + r.g + '组 —— 学生均分 ' + r.student_pct + ' · 教师分 ' + r.teacher_pct + ' · 加权总分 ' + r.weighted + '（第' + n + '名）');
+  });
+  lines.push('', '统计时间：' + fmtTime(new Date().toISOString()));
+  return lines.join('\n');
+}
+function exportCsv() {
+  const lines = ['组别,角色,匿名,姓名,评语,'
+    + CFG.ITEMS.map((_, i) => '第' + (i + 1) + '项').join(',') + ',总分(百分)'];
+  allVotes.forEach(v => {
+    const pct = v.scores.reduce((a, b) => a + b, 0) * 2;
+    lines.push([
+      v.grp, v.role === 'teacher' ? '教师' : '学生', v.anonymous ? '是' : '否',
+      v.anonymous ? '' : (v.name || ''), (v.comment || '').replace(/,/g, '，').replace(/\n/g, ' '),
+      ...v.scores, pct,
+    ].join(','));
+  });
+  const blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'scores.csv';
+  a.click();
+}
+async function init() {
+  if (sessionStorage.getItem('adm') === '1') { $('#login').style.display = 'none'; $('#dash').style.display = 'block'; refresh(); setInterval(refresh, 5000); }
+  $('#go').onclick = async () => {
+    const j = await rpc('verify_admin', { p_password: $('#pw').value });
+    if (!j.ok) { $('#msg').textContent = j.msg; return; }
+    sessionStorage.setItem('adm', '1');
+    $('#login').style.display = 'none'; $('#dash').style.display = 'block';
+    refresh(); setInterval(refresh, 5000);
+  };
+  $('#pw').onkeydown = e => { if (e.key === 'Enter') $('#go').click(); };
+  $('#reportBtn').onclick = buildReport;
+  $('#copyBtn').onclick = async () => { await navigator.clipboard.writeText(reportText()); alert('成绩单已复制'); };
+  $('#printBtn').onclick = () => { buildReport(); document.body.classList.add('printing'); setTimeout(() => { window.print(); document.body.classList.remove('printing'); }, 100); };
+  $('#csvBtn').onclick = exportCsv;
+  $('#resetBtn').onclick = async () => {
+    const pw = prompt('清空全部评分数据？请输入管理员口令确认：');
+    if (!pw) return;
+    const j = await rpc('admin_reset', { p_password: pw });
+    alert(j.ok ? j.msg : (j.msg || j.message || '操作失败'));
+    refresh();
+  };
+}
+init();
+</script>
+</body>
+</html>

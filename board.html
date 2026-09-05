@@ -20,13 +20,16 @@
       <button class="btn small" id="csvBtn">导出CSV</button>
       <button class="btn small ghost" id="resetBtn">清空数据</button>
     </div>
+    <div class="foot" style="margin-top:2px">点击某一行可聚焦该组</div>
 
-    <table id="tbl">
-      <thead>
-        <tr><th>名次</th><th>组别</th><th>学生票数</th><th>学生均分</th><th>教师分</th><th>加权总分</th><th>星级</th></tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+    <div class="tblwrap">
+      <table id="tbl">
+        <thead>
+          <tr><th>名次</th><th>组别</th><th>学生票数</th><th>学生均分</th><th>教师分</th><th>加权总分</th><th>星级</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
 
     <div class="extras" id="comments"></div>
   </div>
@@ -35,7 +38,7 @@
 <script>
 const $ = s => document.querySelector(s);
 const CFG = window.APP_CONFIG;
-let allVotes = [];
+let allVotes = [], focusGrp = null;
 
 async function rpc(fn, body) {
   const r = await fetch(CFG.SUPABASE_URL + '/rest/v1/rpc/' + fn, {
@@ -95,20 +98,25 @@ async function refresh() {
   tb.innerHTML = '';
   rows.forEach((r, i) => {
     const tr = document.createElement('tr');
-    const rank = r.weighted != null && i === 0 ? '<span class="rank top">1</span>'
-               : (r.weighted != null ? '<span class="rank">' + (i + 1) + '</span>' : '—');
+    if (focusGrp === r.g) tr.className = 'fg';
+    const rank = r.weighted != null && i === 0 ? '<span class="rank g">1</span>'
+               : (r.weighted === null ? '—'
+                 : '<span class="rank ' + (i === 1 ? 's' : i === 2 ? 'b' : '') + '">' + (i + 1) + '</span>');
     const teacher = r.teacher_pct != null
       ? r.teacher_pct + '<div style="font-size:14px;color:#5c451f">' + r.tv + '票</div>'
       : '待评';
     const weighted = r.weighted != null ? '<b>' + r.weighted + '</b>' : '待教师打分';
     const star = r.student_pct != null ? (r.student_pct / 20).toFixed(1) + '星' : '—';
+    const pctbar = r.student_pct != null
+      ? '<div class="pct"><i style="width:' + r.student_pct + '%"></i></div>' : '';
     tr.innerHTML =
       '<td>' + rank + '</td><td><b>第' + r.g + '组</b></td>' +
       '<td>' + r.sv + '</td>' +
-      '<td>' + (r.student_pct != null ? r.student_pct : '—') + '</td>' +
+      '<td>' + (r.student_pct != null ? r.student_pct : '—') + pctbar + '</td>' +
       '<td>' + teacher + '</td>' +
       '<td>' + weighted + '</td>' +
       '<td>' + star + '</td>';
+    tr.onclick = () => { focusGrp = (focusGrp === r.g) ? null : r.g; refresh(); };
     tb.appendChild(tr);
   });
 
