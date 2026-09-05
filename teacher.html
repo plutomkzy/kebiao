@@ -3,7 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>教师打分 · 课标讲解评分</title>
+<meta name="theme-color" content="#241708">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23b03a2e'/%3E%3Ctext x='32' y='43' font-size='34' text-anchor='middle' fill='%23f7ead0' font-family='serif'%3E%E8%AF%84%3C/text%3E%3C/svg%3E">
+<title>教师评分 · 课标讲解评分系统</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,7 +14,7 @@
     <div class="head">
       <span class="seal">师</span>
       <h1>小组讲解评分 <span class="badge">教师票 · 权重30%</span></h1>
-      <div class="sub">教师分与全班学生均分按 70 : 30 合成该组最终成绩</div>
+      <div class="sub">教师评分按 30% 计入小组最终成绩（学生部分占 70%）</div>
     </div>
 
     <input type="password" id="password" placeholder="教师口令" style="text-align:center;letter-spacing:4px">
@@ -96,7 +98,7 @@ async function init() {
       p_anonymous: $('#anon').checked, p_name: '', p_comment: $('#comment').value,
       p_password: $('#password').value,
     });
-    $('#msg').textContent = j.ok ? j.msg + '（同组可修改后重投）' : (j.msg || j.message || '提交失败，请检查网络');
+    $('#msg').textContent = j.ok ? '教师评分已提交' : (j.msg || j.message || '提交失败，请检查网络');
     if (j.ok) { resetScores(); $('#comment').value = ''; }
   };
 }

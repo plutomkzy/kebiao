@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#241708">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23b03a2e'/%3E%3Ctext x='32' y='43' font-size='34' text-anchor='middle' fill='%23f7ead0' font-family='serif'%3E%E8%AF%84%3C/text%3E%3C/svg%3E">
 <title>课标讲解评分系统</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -12,47 +14,28 @@
     <div class="head hero">
       <span class="seal">评</span>
       <h1>《语文课程标准》<br>小组讲解评分</h1>
-      <div class="divider"><i></i><b>◆</b><i></i></div>
-      <div class="sub">汉语言文学（师范类）2024级5班 · 十项五星制 · 学生70% + 教师30%</div>
+      <div class="divider"></div>
+      <div class="sub">汉语言文学（师范类）2024级5班&nbsp;&nbsp;｜&nbsp;&nbsp;十项五星制&nbsp;&nbsp;｜&nbsp;&nbsp;学生70% · 教师30%</div>
     </div>
 
     <div class="rolecards">
       <a class="rolecard" href="vote.html">
         <div class="ic">生</div>
-        <div class="nm">学生打分</div>
-        <div class="ds">选组 · 十项打星 · 可选匿名 · 可留评语</div>
+        <div class="nm">学生评分</div>
+        <div class="ds">每项 1—5 星 · 共十项</div>
       </a>
       <a class="rolecard teacher" href="teacher.html">
         <div class="ic">师</div>
-        <div class="nm">教师打分</div>
-        <div class="ds">需口令 · 分数按 30% 权重计入</div>
+        <div class="nm">教师评分</div>
+        <div class="ds">计权 30% · 需口令</div>
       </a>
     </div>
 
-    <a class="btn ghost" href="board.html">实时大屏 · 榜单与评语</a>
-    <a class="btn ghost" href="admin.html" style="margin-top:0">管理后台 · 需口令</a>
-
-    <div class="qrline">
-      <div class="qrbox"><img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=https%3A%2F%2Fplutomkzy.github.io%2Fkebiao%2F" alt="扫码打分"></div>
-      <div class="tip">
-        手机扫码即可打分<br>
-        <a href="javascript:void(0)" id="copyLink">点击复制本页链接</a><br>
-        <span id="copied" style="color:var(--red)"></span>
-      </div>
+    <div class="entryline">
+      <a href="board.html">实时大屏</a>
+      <a href="admin.html">管理后台</a>
     </div>
-
-    <p class="foot">评分实时汇总 · 数据云端保存 · 展示结束后可一键出分</p>
   </div>
 </div>
-<script>
-document.getElementById('copyLink').onclick = async () => {
-  try {
-    await navigator.clipboard.writeText(location.href);
-    document.getElementById('copied').textContent = '已复制 ✓';
-  } catch (e) {
-    document.getElementById('copied').textContent = '复制失败，请长按地址栏复制';
-  }
-};
-</script>
 </body>
 </html>

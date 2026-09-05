@@ -3,7 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>学生打分 · 课标讲解评分</title>
+<meta name="theme-color" content="#241708">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23b03a2e'/%3E%3Ctext x='32' y='43' font-size='34' text-anchor='middle' fill='%23f7ead0' font-family='serif'%3E%E8%AF%84%3C/text%3E%3C/svg%3E">
+<title>学生评分 · 课标讲解评分系统</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,7 +14,7 @@
     <div class="head">
       <span class="seal">生</span>
       <h1>小组讲解评分</h1>
-      <div class="sub">为正在展示的小组打分 · 每项 1—5 星 · 共十项</div>
+      <div class="sub">每项 1—5 星 · 共十项 · 请对正在展示的小组评分</div>
     </div>
 
     <div class="groups" id="groups"></div>
@@ -21,12 +23,12 @@
 
     <div class="row">
       <input type="checkbox" id="anon" checked style="width:22px;height:22px;margin:0">
-      <label for="anon" style="cursor:pointer">匿名打分</label>
+      <label for="anon" style="cursor:pointer">匿名评分</label>
     </div>
     <div id="nameRow" style="display:none">
-      <input type="text" id="name" placeholder="你的姓名（记名打分必填）" maxlength="20">
+      <input type="text" id="name" placeholder="姓名（记名评分时填写）" maxlength="20">
     </div>
-    <textarea id="comment" placeholder="评语（可选）：一句话点评这个小组的讲解"></textarea>
+    <textarea id="comment" placeholder="评语（选填）"></textarea>
 
     <button class="btn primary" id="submit" style="margin-top:20px">提交评分</button>
     <div id="msg"></div>
@@ -59,7 +61,7 @@ function renderGroups() {
   box.innerHTML = '';
   for (let g = 1; g <= CFG.GROUP_COUNT; g++) {
     const b = document.createElement('button');
-    b.className = 'gchip' + (g === cur ? ' on' : '');
+    b.className = 'gchip' + (g === cur ? ' on' : '') + (voted[g] ? ' done' : '');
     b.textContent = '第' + g + '组';
     b.onclick = () => { cur = g; renderGroups(); loadVoted(); };
     box.appendChild(b);
@@ -93,7 +95,7 @@ function loadVoted() {
   $('#items').querySelectorAll('.item').forEach((el, i) => {
     paint(el.querySelector('.stars'), scores[i]);
   });
-  $('#msg').textContent = v ? '（本组你已打过分，可修改后重新提交）' : '';
+  $('#msg').textContent = v ? '本组已评分，可修改后重新提交' : '';
 }
 function toggleName() { $('#nameRow').style.display = $('#anon').checked ? 'none' : 'block'; }
 
@@ -106,15 +108,16 @@ async function init() {
   renderGroups(); renderItems(); loadVoted();
   $('#anon').onchange = toggleName;
   $('#submit').onclick = async () => {
-    if (scores.some(s => !s)) { $('#msg').textContent = '还有项目没打分，请完成全部十项'; return; }
+    if (scores.some(s => !s)) { $('#msg').textContent = '尚有项目未评分，请完成全部十项'; return; }
     const j = await rpc('submit_vote', {
       p_client_id: cid, p_role: 'student', p_grp: cur, p_scores: scores,
       p_anonymous: $('#anon').checked, p_name: $('#name').value, p_comment: $('#comment').value,
     });
-    $('#msg').textContent = j.ok ? j.msg + '（同组可修改后重投）' : (j.msg || j.message || '提交失败，请检查网络');
+    $('#msg').textContent = j.ok ? '评分已提交' : (j.msg || j.message || '提交失败，请检查网络');
     if (j.ok) {
       voted[cur] = { scores: scores.slice(), anonymous: $('#anon').checked, name: $('#name').value, comment: $('#comment').value };
       localStorage.setItem('voted', JSON.stringify(voted));
+      renderGroups();
     }
   };
 }
