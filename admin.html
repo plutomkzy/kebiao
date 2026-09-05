@@ -68,6 +68,7 @@ const $ = s => document.querySelector(s);
 const CFG = window.APP_CONFIG;
 const SUB = CFG.SUB_GROUPS_PER_GROUP || 1;
 let allVotes = [];
+const openSet = new Set();
 
 async function rpc(fn, body) {
   const r = await fetch(CFG.SUPABASE_URL + '/rest/v1/rpc/' + fn, {
@@ -153,12 +154,31 @@ async function refresh() {
       '<td>' + rank + '</td>' +
       '<td><button class="dbtn">' + (r.votes.length ? '展开' : '无') + '</button></td>';
     tb.appendChild(tr);
+    if (openSet.has(r.g + '-' + r.s)) {
+      expandDetail(tr, r);
+      tr.querySelector('.dbtn').textContent = '收起';
+    }
     tr.querySelector('.dbtn').onclick = () => { toggleDetail(tr, r); };
   });
 }
 function toggleDetail(tr, r) {
-  const next = tr.nextElementSibling;
-  if (next && next.className === 'dvote') { next.remove(); tr.querySelector('.dbtn').textContent = '展开'; return; }
+  const key = r.g + '-' + r.s;
+  if (openSet.has(key)) {
+    openSet.delete(key);
+    let n = tr.nextElementSibling;
+    while (n && n.className === 'dvote') {
+      const x = n;
+      n = n.nextElementSibling;
+      x.remove();
+    }
+    tr.querySelector('.dbtn').textContent = '展开';
+    return;
+  }
+  openSet.add(key);
+  expandDetail(tr, r);
+  tr.querySelector('.dbtn').textContent = '收起';
+}
+function expandDetail(tr, r) {
   r.votes.slice().reverse().forEach(v => {
     const d = document.createElement('div');
     d.className = 'dvote' + (v.role === 'teacher' ? ' teacher' : '');
@@ -171,7 +191,6 @@ function toggleDetail(tr, r) {
       (v.comment ? '<br><span class="cm">评语：' + v.comment + '</span>' : '');
     tr.after(d);
   });
-  tr.querySelector('.dbtn').textContent = '收起';
 }
 function buildReport() {
   const rows = calc(allVotes);

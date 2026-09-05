@@ -103,7 +103,7 @@ async function refresh() {
                : (r.weighted === null ? '—'
                  : '<span class="rank ' + (i === 1 ? 's' : i === 2 ? 'b' : '') + '">' + (i + 1) + '</span>');
     const teacher = r.teacher_pct != null
-      ? r.teacher_pct + '<div style="font-size:14px;color:#5c451f">' + r.tv + '票</div>'
+      ? r.teacher_pct
       : '待评';
     const weighted = r.weighted != null ? '<b>' + r.weighted + '</b>' : '待教师打分';
     const pctbar = r.student_pct != null
