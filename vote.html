@@ -14,10 +14,11 @@
     <div class="head">
       <span class="seal">生</span>
       <h1>小组讲解评分</h1>
-      <div class="sub">每项 1—5 星 · 共十项 · 请对正在展示的小组评分</div>
+      <div class="sub">请选择正在展示的 <b>大组 · 小组</b>，然后完成十项评分</div>
     </div>
 
     <div class="groups" id="groups"></div>
+    <div class="groups" id="subgroups"></div>
 
     <div id="items"></div>
 
@@ -38,8 +39,10 @@
 <script>
 const $ = s => document.querySelector(s);
 const CFG = window.APP_CONFIG;
-let cid = null, cur = 1, scores = [];
+const SUB = CFG.SUB_GROUPS_PER_GROUP || 1;
+let cid = null, cur = 1, sub = 1, scores = [];
 const voted = JSON.parse(localStorage.getItem('voted') || '{}');
+const key = () => cur + '-' + sub;
 
 async function rpc(fn, body) {
   const r = await fetch(CFG.SUPABASE_URL + '/rest/v1/rpc/' + fn, {
@@ -61,9 +64,21 @@ function renderGroups() {
   box.innerHTML = '';
   for (let g = 1; g <= CFG.GROUP_COUNT; g++) {
     const b = document.createElement('button');
-    b.className = 'gchip' + (g === cur ? ' on' : '') + (voted[g] ? ' done' : '');
-    b.textContent = '第' + g + '组';
-    b.onclick = () => { cur = g; renderGroups(); loadVoted(); };
+    b.className = 'gchip' + (g === cur ? ' on' : '');
+    b.textContent = '第' + g + '大组';
+    b.onclick = () => { cur = g; renderGroups(); renderSubGroups(); loadVoted(); };
+    box.appendChild(b);
+  }
+  renderSubGroups();
+}
+function renderSubGroups() {
+  const box = $('#subgroups');
+  box.innerHTML = '';
+  for (let s = 1; s <= SUB; s++) {
+    const b = document.createElement('button');
+    b.className = 'gchip' + (s === sub ? ' on' : '') + (voted[cur + '-' + s] ? ' done' : '');
+    b.textContent = '第' + s + '小组';
+    b.onclick = () => { sub = s; renderSubGroups(); loadVoted(); };
     box.appendChild(b);
   }
 }
@@ -86,7 +101,7 @@ function renderItems() {
   });
 }
 function loadVoted() {
-  const v = voted[cur];
+  const v = voted[key()];
   scores = v && v.scores ? v.scores.slice() : Array(CFG.ITEMS.length).fill(0);
   $('#anon').checked = v ? !!v.anonymous : true;
   $('#name').value = v ? (v.name || '') : '';
@@ -95,7 +110,7 @@ function loadVoted() {
   $('#items').querySelectorAll('.item').forEach((el, i) => {
     paint(el.querySelector('.stars'), scores[i]);
   });
-  $('#msg').textContent = v ? '本组已评分，可修改后重新提交' : '';
+  $('#msg').textContent = v ? '该小组已评分，可修改后重新提交' : '';
 }
 function toggleName() { $('#nameRow').style.display = $('#anon').checked ? 'none' : 'block'; }
 
@@ -110,14 +125,14 @@ async function init() {
   $('#submit').onclick = async () => {
     if (scores.some(s => !s)) { $('#msg').textContent = '尚有项目未评分，请完成全部十项'; return; }
     const j = await rpc('submit_vote', {
-      p_client_id: cid, p_role: 'student', p_grp: cur, p_scores: scores,
+      p_client_id: cid, p_role: 'student', p_grp: cur, p_subgrp: sub, p_scores: scores,
       p_anonymous: $('#anon').checked, p_name: $('#name').value, p_comment: $('#comment').value,
     });
     $('#msg').textContent = j.ok ? '评分已提交' : (j.msg || j.message || '提交失败，请检查网络');
     if (j.ok) {
-      voted[cur] = { scores: scores.slice(), anonymous: $('#anon').checked, name: $('#name').value, comment: $('#comment').value };
+      voted[key()] = { scores: scores.slice(), anonymous: $('#anon').checked, name: $('#name').value, comment: $('#comment').value };
       localStorage.setItem('voted', JSON.stringify(voted));
-      renderGroups();
+      renderSubGroups();
     }
   };
 }

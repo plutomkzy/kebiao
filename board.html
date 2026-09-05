@@ -22,7 +22,7 @@
       <button class="btn small" id="csvBtn">导出数据</button>
       <button class="btn small ghost" id="resetBtn">清空数据</button>
     </div>
-    <div class="note">点击任意行可聚焦该组</div>
+    <div class="note">点击任意行可聚焦该小组</div>
 
     <div class="tblwrap">
       <table id="tbl">
@@ -40,7 +40,8 @@
 <script>
 const $ = s => document.querySelector(s);
 const CFG = window.APP_CONFIG;
-let allVotes = [], focusGrp = null;
+const SUB = CFG.SUB_GROUPS_PER_GROUP || 1;
+let allVotes = [], focusKey = null;
 
 async function rpc(fn, body) {
   const r = await fetch(CFG.SUPABASE_URL + '/rest/v1/rpc/' + fn, {
@@ -64,10 +65,12 @@ async function loadVotes() {
 function calc(votes) {
   const gs = {};
   for (let g = 1; g <= CFG.GROUP_COUNT; g++) {
-    gs[g] = { g, sv: 0, ss: 0, tv: 0, ts: 0, comments: [] };
+    for (let s = 1; s <= SUB; s++) {
+      gs[g + '-' + s] = { g, s, sv: 0, ss: 0, tv: 0, ts: 0, comments: [] };
+    }
   }
   votes.forEach(v => {
-    const d = gs[v.grp];
+    const d = gs[v.grp + '-' + (v.subgrp || 1)];
     if (!d) return;
     const pct = v.scores.reduce((a, b) => a + b, 0) * 2;
     if (v.role === 'student') { d.sv++; d.ss += pct; }
@@ -87,7 +90,7 @@ function calc(votes) {
     if (a.weighted != null && b.weighted != null) return b.weighted - a.weighted;
     if (a.weighted != null) return -1;
     if (b.weighted != null) return 1;
-    return (b.student_pct || 0) - (a.student_pct || 0);
+    return (b.student_pct || 0) - (a.student_pct || 0) || a.g - b.g || a.s - b.s;
   });
   return rows;
 }
@@ -100,7 +103,7 @@ async function refresh() {
   tb.innerHTML = '';
   rows.forEach((r, i) => {
     const tr = document.createElement('tr');
-    if (focusGrp === r.g) tr.className = 'fg';
+    if (focusKey === r.g + '-' + r.s) tr.className = 'fg';
     const rank = r.weighted != null && i === 0 ? '<span class="rank g">1</span>'
                : (r.weighted === null ? '—'
                  : '<span class="rank ' + (i === 1 ? 's' : i === 2 ? 'b' : '') + '">' + (i + 1) + '</span>');
@@ -112,13 +115,13 @@ async function refresh() {
     const pctbar = r.student_pct != null
       ? '<div class="pct"><i style="width:' + r.student_pct + '%"></i></div>' : '';
     tr.innerHTML =
-      '<td>' + rank + '</td><td><b>第' + r.g + '组</b></td>' +
+      '<td>' + rank + '</td><td><b>第' + r.g + '大组·第' + r.s + '小组</b></td>' +
       '<td>' + r.sv + '</td>' +
       '<td>' + (r.student_pct != null ? r.student_pct : '—') + pctbar + '</td>' +
       '<td>' + teacher + '</td>' +
       '<td>' + weighted + '</td>' +
       '<td>' + star + '</td>';
-    tr.onclick = () => { focusGrp = (focusGrp === r.g) ? null : r.g; refresh(); };
+    tr.onclick = () => { focusKey = (focusKey === r.g + '-' + r.s) ? null : r.g + '-' + r.s; refresh(); };
     tb.appendChild(tr);
   });
 
@@ -128,7 +131,7 @@ async function refresh() {
     if (!r.comments.length) return;
     const box = document.createElement('div');
     box.className = 'comment-box';
-    box.innerHTML = '<h3>第' + r.g + '组 · 评语（' + r.comments.length + '条）</h3>';
+    box.innerHTML = '<h3>第' + r.g + '大组·第' + r.s + '小组 · 评语（' + r.comments.length + '条）</h3>';
     const ul = document.createElement('ul');
     r.comments.forEach(c => {
       const li = document.createElement('li');
@@ -144,12 +147,12 @@ async function refresh() {
   });
 }
 function exportCsv() {
-  const lines = ['组别,角色,匿名,姓名,评语,'
+  const lines = ['大组,小组,角色,匿名,姓名,评语,'
     + CFG.ITEMS.map((_, i) => '第' + (i + 1) + '项').join(',') + ',总分(百分)'];
   allVotes.forEach(v => {
     const pct = v.scores.reduce((a, b) => a + b, 0) * 2;
     lines.push([
-      v.grp, v.role === 'teacher' ? '教师' : '学生', v.anonymous ? '是' : '否',
+      v.grp, v.subgrp || 1, v.role === 'teacher' ? '教师' : '学生', v.anonymous ? '是' : '否',
       v.anonymous ? '' : (v.name || ''), (v.comment || '').replace(/,/g, '，').replace(/\n/g, ' '),
       ...v.scores, pct,
     ].join(','));

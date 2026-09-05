@@ -20,13 +20,14 @@
     <input type="password" id="password" placeholder="教师口令" style="text-align:center;letter-spacing:4px">
 
     <div class="groups" id="groups"></div>
+    <div class="groups" id="subgroups"></div>
     <div id="items"></div>
 
     <div class="row">
       <input type="checkbox" id="anon" style="width:22px;height:22px;margin:0">
       <label for="anon" style="cursor:pointer">匿名点评（分数仍计入教师分）</label>
     </div>
-    <textarea id="comment" placeholder="评语（可选）：给这个小组的建议"></textarea>
+    <textarea id="comment" placeholder="评语（选填）"></textarea>
 
     <button class="btn primary" id="submit" style="margin-top:20px">提交教师评分</button>
     <div id="msg"></div>
@@ -36,7 +37,8 @@
 <script>
 const $ = s => document.querySelector(s);
 const CFG = window.APP_CONFIG;
-let cur = 1, scores = [];
+const SUB = CFG.SUB_GROUPS_PER_GROUP || 1;
+let cur = 1, sub = 1, scores = [];
 const tcid = localStorage.getItem('tcid') || (() => { const v = (crypto.randomUUID && crypto.randomUUID()) || Math.random().toString(36).slice(2); localStorage.setItem('tcid', v); return v; })();
 
 async function rpc(fn, body) {
@@ -60,8 +62,20 @@ function renderGroups() {
   for (let g = 1; g <= CFG.GROUP_COUNT; g++) {
     const b = document.createElement('button');
     b.className = 'gchip' + (g === cur ? ' on' : '');
-    b.textContent = '第' + g + '组';
-    b.onclick = () => { cur = g; renderGroups(); resetScores(); };
+    b.textContent = '第' + g + '大组';
+    b.onclick = () => { cur = g; renderGroups(); renderSubGroups(); resetScores(); };
+    box.appendChild(b);
+  }
+  renderSubGroups();
+}
+function renderSubGroups() {
+  const box = $('#subgroups');
+  box.innerHTML = '';
+  for (let s = 1; s <= SUB; s++) {
+    const b = document.createElement('button');
+    b.className = 'gchip' + (s === sub ? ' on' : '');
+    b.textContent = '第' + s + '小组';
+    b.onclick = () => { sub = s; renderSubGroups(); resetScores(); };
     box.appendChild(b);
   }
 }
@@ -92,13 +106,13 @@ async function init() {
   renderGroups(); renderItems();
   $('#submit').onclick = async () => {
     if (!$('#password').value) { $('#msg').textContent = '请输入教师口令'; return; }
-    if (scores.some(s => !s)) { $('#msg').textContent = '还有项目没打分，请完成全部十项'; return; }
+    if (scores.some(s => !s)) { $('#msg').textContent = '尚有项目未评分，请完成全部十项'; return; }
     const j = await rpc('submit_vote', {
-      p_client_id: tcid, p_role: 'teacher', p_grp: cur, p_scores: scores,
+      p_client_id: tcid, p_role: 'teacher', p_grp: cur, p_subgrp: sub, p_scores: scores,
       p_anonymous: $('#anon').checked, p_name: '', p_comment: $('#comment').value,
       p_password: $('#password').value,
     });
-    $('#msg').textContent = j.ok ? '教师评分已提交' : (j.msg || j.message || '提交失败，请检查网络');
+    $('#msg').textContent = j.ok ? ('教师评分已提交：第' + cur + '大组·第' + sub + '小组') : (j.msg || j.message || '提交失败，请检查网络');
     if (j.ok) { resetScores(); $('#comment').value = ''; }
   };
 }

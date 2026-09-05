@@ -31,10 +31,11 @@
         <h1>管理后台 <span class="badge">仅管理员</span></h1>
         <div class="sub" id="clock">--</div>
       </div>
+      <p class="note">个人实践分折算：小组加权分 × 0.4（实践作业 40 分制）</p>
       <div class="statchips" id="chips"></div>
 
       <div style="text-align:center">
-        <button class="btn small primary" id="reportBtn">一键出分 · 生成成绩单</button>
+        <button class="btn small primary" id="reportBtn">生成成绩单</button>
         <button class="btn small" id="copyBtn">复制成绩单</button>
         <button class="btn small" id="printBtn">打印成绩单</button>
         <button class="btn small" id="csvBtn">导出数据</button>
@@ -44,7 +45,7 @@
       <div class="tblwrap">
         <table id="tbl">
           <thead>
-            <tr><th>组别</th><th>学生票</th><th>学生均分</th><th>教师分</th><th>加权总分</th><th>排名</th><th>明细</th></tr>
+            <tr><th>组别</th><th>学生票</th><th>学生均分</th><th>教师分</th><th>加权总分</th><th>折算40分制</th><th>排名</th><th>明细</th></tr>
           </thead>
           <tbody></tbody>
         </table>
@@ -52,6 +53,7 @@
 
       <div class="report print-area" id="report" style="display:none">
         <h2>《语文课程标准》小组讲解 · 成绩单</h2>
+        <p class="note" style="margin:0 0 10px">各组为 2 人小组；组内成员按本组成绩计分（实践作业折算分 = 加权分 × 0.4）</p>
         <div id="reportBody"></div>
         <div class="rdate" id="reportDate"></div>
       </div>
@@ -64,6 +66,7 @@
 <script>
 const $ = s => document.querySelector(s);
 const CFG = window.APP_CONFIG;
+const SUB = CFG.SUB_GROUPS_PER_GROUP || 1;
 let allVotes = [];
 
 async function rpc(fn, body) {
@@ -88,10 +91,12 @@ async function loadVotes() {
 function calc(votes) {
   const gs = {};
   for (let g = 1; g <= CFG.GROUP_COUNT; g++) {
-    gs[g] = { g, sv: 0, ss: 0, tv: 0, ts: 0, votes: [] };
+    for (let s = 1; s <= SUB; s++) {
+      gs[g + '-' + s] = { g, s, sv: 0, ss: 0, tv: 0, ts: 0, votes: [] };
+    }
   }
   votes.forEach(v => {
-    const d = gs[v.grp];
+    const d = gs[v.grp + '-' + (v.subgrp || 1)];
     if (!d) return;
     const pct = v.scores.reduce((a, b) => a + b, 0) * 2;
     if (v.role === 'student') { d.sv++; d.ss += pct; }
@@ -101,17 +106,16 @@ function calc(votes) {
   const rows = Object.values(gs).map(d => {
     d.student_pct = d.sv ? Math.round(d.ss / d.sv * 10) / 10 : null;
     d.teacher_pct = d.tv ? Math.round(d.ts / d.tv * 10) / 10 : null;
-    const vArr = d.votes.filter(v => v.role === 'student');
-    d.st_mean = vArr.length ? Math.round(vArr.reduce((a, v) => a + v.scores.reduce((x, y) => x + y, 0) * 2, 0) / vArr.length * 10) / 10 : null;
     d.weighted = (d.student_pct != null && d.teacher_pct != null)
       ? Math.round((d.student_pct * CFG.STUDENT_WEIGHT + d.teacher_pct * CFG.TEACHER_WEIGHT) * 10) / 10 : null;
+    d.converted = d.weighted != null ? Math.round(d.weighted * 0.4 * 10) / 10 : null;
     return d;
   });
   rows.sort((a, b) => {
     if (a.weighted != null && b.weighted != null) return b.weighted - a.weighted;
     if (a.weighted != null) return -1;
     if (b.weighted != null) return 1;
-    return (b.student_pct || 0) - (a.student_pct || 0);
+    return (b.student_pct || 0) - (a.student_pct || 0) || a.g - b.g || a.s - b.s;
   });
   return rows;
 }
@@ -131,7 +135,7 @@ async function refresh() {
     '<span class="chip">总票数 <b>' + allVotes.length + '</b></span>' +
     '<span class="chip">学生票 <b>' + st + '</b></span>' +
     '<span class="chip">教师票 <b>' + tn + '</b></span>' +
-    '<span class="chip">已出分 <b>' + done + '</b> / ' + CFG.GROUP_COUNT + ' 组</span>';
+    '<span class="chip">已出分 <b>' + done + '</b> / ' + (CFG.GROUP_COUNT * SUB) + ' 个小组</span>';
 
   const tb = $('#tbl tbody');
   tb.innerHTML = '';
@@ -143,10 +147,11 @@ async function refresh() {
     const teacher = r.teacher_pct != null ? r.teacher_pct + '（' + r.tv + '票）' : '待评';
     const pctbar = r.student_pct != null ? '<div class="pct"><i style="width:' + r.student_pct + '%"></i></div>' : '';
     tr.innerHTML =
-      '<td><b>第' + r.g + '组</b></td><td>' + r.sv + '</td>' +
+      '<td><b>第' + r.g + '大组·第' + r.s + '小组</b></td><td>' + r.sv + '</td>' +
       '<td>' + (r.student_pct != null ? r.student_pct : '—') + pctbar + '</td>' +
       '<td>' + teacher + '</td>' +
       '<td>' + (r.weighted != null ? '<b>' + r.weighted + '</b>' : '待教师打分') + '</td>' +
+      '<td>' + (r.converted != null ? '<b>' + r.converted + '</b>' : '—') + '</td>' +
       '<td>' + rank + '</td>' +
       '<td><button class="dbtn">' + (r.votes.length ? '展开' : '无') + '</button></td>';
     tb.appendChild(tr);
@@ -171,17 +176,16 @@ function toggleDetail(tr, r) {
   tr.querySelector('.dbtn').textContent = '收起';
 }
 function buildReport() {
-  const rows = calc(allVotes).filter(r => r.weighted != null);
-  $('#reportBody').innerHTML = rows.map((r, i) =>
-    '<div class="rline">第' + r.g + '组 —— 学生均分 <b>' + r.student_pct +
+  const rows = calc(allVotes);
+  const done = rows.filter(r => r.weighted != null);
+  const und = rows.filter(r => r.weighted == null && (r.sv || r.tv));
+  $('#reportBody').innerHTML = done.map((r, i) =>
+    '<div class="rline">第' + r.g + '大组·第' + r.s + '小组 —— 学生均分 <b>' + r.student_pct +
     '</b> · 教师分 <b>' + r.teacher_pct + '</b> · 加权总分 <b>' + r.weighted +
-    '</b>（第' + (i + 1) + '名）</div>').join('');
-  const und = calc(allVotes).filter(r => r.weighted == null && (r.sv || r.tv));
-  if (und.length) {
-    $('#reportBody').innerHTML += und.map(r =>
-      '<div class="rline">第' + r.g + '组 —— 学生均分 ' + (r.student_pct != null ? r.student_pct : '—') +
-      ' · 教师分 待评 · 暂时无法出分</div>').join('');
-  }
+    '</b> · 个人折算（40分制）<b>' + r.converted + '</b>（第' + (i + 1) + '名）</div>').join('') +
+    und.map(r => '<div class="rline">第' + r.g + '大组·第' + r.s +
+      '小组 —— 学生均分 ' + (r.student_pct != null ? r.student_pct : '—') +
+      ' · 教师分 待评 · 暂无法出分</div>').join('');
   $('#reportDate').textContent = '统计时间：' + fmtTime(new Date().toISOString());
   $('#report').style.display = 'block';
   $('#report').scrollIntoView({ behavior: 'smooth' });
@@ -193,18 +197,19 @@ function reportText() {
   rows.forEach(r => {
     if (r.weighted == null) return;
     n++;
-    lines.push('第' + r.g + '组 —— 学生均分 ' + r.student_pct + ' · 教师分 ' + r.teacher_pct + ' · 加权总分 ' + r.weighted + '（第' + n + '名）');
+    lines.push('第' + r.g + '大组·第' + r.s + '小组 —— 学生均分 ' + r.student_pct + ' · 教师分 ' +
+      r.teacher_pct + ' · 加权总分 ' + r.weighted + ' · 个人折算 ' + r.converted + '（第' + n + '名）');
   });
   lines.push('', '统计时间：' + fmtTime(new Date().toISOString()));
   return lines.join('\n');
 }
 function exportCsv() {
-  const lines = ['组别,角色,匿名,姓名,评语,'
+  const lines = ['大组,小组,角色,匿名,姓名,评语,'
     + CFG.ITEMS.map((_, i) => '第' + (i + 1) + '项').join(',') + ',总分(百分)'];
   allVotes.forEach(v => {
     const pct = v.scores.reduce((a, b) => a + b, 0) * 2;
     lines.push([
-      v.grp, v.role === 'teacher' ? '教师' : '学生', v.anonymous ? '是' : '否',
+      v.grp, v.subgrp || 1, v.role === 'teacher' ? '教师' : '学生', v.anonymous ? '是' : '否',
       v.anonymous ? '' : (v.name || ''), (v.comment || '').replace(/,/g, '，').replace(/\n/g, ' '),
       ...v.scores, pct,
     ].join(','));
