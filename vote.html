@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>学生打分 · 课标讲解评分</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="panel">
+    <div class="head">
+      <span class="seal">生</span>
+      <h1>小组讲解评分</h1>
+      <div class="sub">为正在展示的小组打分 · 每项 1—5 星 · 共十项</div>
+    </div>
+
+    <div class="groups" id="groups"></div>
+
+    <div id="items"></div>
+
+    <div class="row">
+      <input type="checkbox" id="anon" checked style="width:22px;height:22px;margin:0">
+      <label for="anon" style="cursor:pointer">匿名打分</label>
+    </div>
+    <div id="nameRow" style="display:none">
+      <input type="text" id="name" placeholder="你的姓名（记名打分必填）" maxlength="20">
+    </div>
+    <textarea id="comment" placeholder="评语（可选）：一句话点评这个小组的讲解"></textarea>
+
+    <button class="btn primary" id="submit" style="margin-top:20px">提交评分</button>
+    <div id="msg"></div>
+  </div>
+</div>
+<script src="config.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const CFG = window.APP_CONFIG;
+let cid = null, cur = 1, scores = [];
+const voted = JSON.parse(localStorage.getItem('voted') || '{}');
+
+async function rpc(fn, body) {
+  const r = await fetch(CFG.SUPABASE_URL + '/rest/v1/rpc/' + fn, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: CFG.SUPABASE_ANON_KEY,
+      Authorization: 'Bearer ' + CFG.SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify(body),
+  });
+  return r.json();
+}
+function paint(starsEl, val) {
+  starsEl.querySelectorAll('span').forEach((s, i) => s.classList.toggle('on', i < val));
+}
+function renderGroups() {
+  const box = $('#groups');
+  box.innerHTML = '';
+  for (let g = 1; g <= CFG.GROUP_COUNT; g++) {
+    const b = document.createElement('button');
+    b.className = 'gchip' + (g === cur ? ' on' : '');
+    b.textContent = '第' + g + '组';
+    b.onclick = () => { cur = g; renderGroups(); loadVoted(); };
+    box.appendChild(b);
+  }
+}
+function renderItems() {
+  const box = $('#items');
+  box.innerHTML = '';
+  scores = Array(CFG.ITEMS.length).fill(0);
+  CFG.ITEMS.forEach((it, i) => {
+    const div = document.createElement('div');
+    div.className = 'item';
+    div.innerHTML =
+      '<div class="ihead"><div><div class="iname"><span class="no">' + (i + 1) + '</span>' + it[0] + '</div>' +
+      '<div class="ihint">' + it[1] + '</div></div>' +
+      '<div class="stars">' + '<span>★</span>'.repeat(5) + '</div></div>';
+    box.appendChild(div);
+    const starsEl = div.querySelector('.stars');
+    starsEl.querySelectorAll('span').forEach((s, k) => {
+      s.onclick = () => { scores[i] = k + 1; paint(starsEl, scores[i]); };
+    });
+  });
+}
+function loadVoted() {
+  const v = voted[cur];
+  scores = v && v.scores ? v.scores.slice() : Array(CFG.ITEMS.length).fill(0);
+  $('#anon').checked = v ? !!v.anonymous : true;
+  $('#name').value = v ? (v.name || '') : '';
+  $('#comment').value = v ? (v.comment || '') : '';
+  toggleName();
+  $('#items').querySelectorAll('.item').forEach((el, i) => {
+    paint(el.querySelector('.stars'), scores[i]);
+  });
+  $('#msg').textContent = v ? '（本组你已打过分，可修改后重新提交）' : '';
+}
+function toggleName() { $('#nameRow').style.display = $('#anon').checked ? 'none' : 'block'; }
+
+async function init() {
+  cid = localStorage.getItem('cid');
+  if (!cid) {
+    cid = (crypto.randomUUID && crypto.randomUUID()) || Math.random().toString(36).slice(2);
+    localStorage.setItem('cid', cid);
+  }
+  renderGroups(); renderItems(); loadVoted();
+  $('#anon').onchange = toggleName;
+  $('#submit').onclick = async () => {
+    if (scores.some(s => !s)) { $('#msg').textContent = '还有项目没打分，请完成全部十项'; return; }
+    const j = await rpc('submit_vote', {
+      p_client_id: cid, p_role: 'student', p_grp: cur, p_scores: scores,
+      p_anonymous: $('#anon').checked, p_name: $('#name').value, p_comment: $('#comment').value,
+    });
+    $('#msg').textContent = j.ok ? j.msg + '（同组可修改后重投）' : (j.msg || j.message || '提交失败，请检查网络');
+    if (j.ok) {
+      voted[cur] = { scores: scores.slice(), anonymous: $('#anon').checked, name: $('#name').value, comment: $('#comment').value };
+      localStorage.setItem('voted', JSON.stringify(voted));
+    }
+  };
+}
+init();
+</script>
+</body>
+</html>
