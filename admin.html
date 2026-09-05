@@ -166,7 +166,7 @@ function toggleDetail(tr, r) {
   if (openSet.has(key)) {
     openSet.delete(key);
     let n = tr.nextElementSibling;
-    while (n && n.className === 'dvote') {
+    while (n && n.classList.contains('dvote')) {
       const x = n;
       n = n.nextElementSibling;
       x.remove();
