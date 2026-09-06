@@ -13,8 +13,8 @@
   <div class="panel">
     <div class="head">
       <span class="seal">生</span>
-      <h1>小组讲解评分</h1>
-      <div class="sub">请选择正在展示的 <b>大组 · 小组</b>，然后完成十项评分</div>
+      <h1 id="title">小组讲解评分</h1>
+      <div class="sub" id="sub"></div>
     </div>
 
     <div class="groups" id="groups"></div>
@@ -36,80 +36,89 @@
   </div>
 </div>
 <script src="config.js"></script>
+<script src="app.js"></script>
 <script>
 const $ = s => document.querySelector(s);
-const CFG = window.APP_CONFIG;
-const SUB = CFG.SUB_GROUPS_PER_GROUP || 1;
+const CLS = sessionStorage.getItem('cls');
+if (!CLS || sessionStorage.getItem('role') !== 'student') location.href = 'student.html';
+const CFG = cfgOf(CLS);
 let cid = null, cur = 1, sub = 1, scores = [];
 const voted = JSON.parse(localStorage.getItem('voted') || '{}');
-const key = () => cur + '-' + sub;
+const key = () => uid(CLS, cur, sub);
+const STD = CFG.mode === 'standard';
+const itemCount = STD ? CFG.items.length : CFG.studentItems.length;
 
-async function rpc(fn, body) {
-  const r = await fetch(CFG.SUPABASE_URL + '/rest/v1/rpc/' + fn, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: CFG.SUPABASE_ANON_KEY,
-      Authorization: 'Bearer ' + CFG.SUPABASE_ANON_KEY,
-    },
-    body: JSON.stringify(body),
-  });
-  return r.json();
-}
-function paint(starsEl, val) {
-  starsEl.querySelectorAll('span').forEach((s, i) => s.classList.toggle('on', i < val));
+function paintStars(el, val) {
+  el.querySelectorAll('span').forEach((s, i) => s.classList.toggle('on', i < val));
 }
 function renderGroups() {
   const box = $('#groups');
   box.innerHTML = '';
-  for (let g = 1; g <= CFG.GROUP_COUNT; g++) {
+  CFG.groups.forEach((n, i) => {
+    const g = i + 1;
     const b = document.createElement('button');
     b.className = 'gchip' + (g === cur ? ' on' : '');
     b.textContent = '第' + g + '大组';
     b.onclick = () => { cur = g; renderGroups(); renderSubGroups(); loadVoted(); };
     box.appendChild(b);
-  }
+  });
   renderSubGroups();
 }
 function renderSubGroups() {
   const box = $('#subgroups');
   box.innerHTML = '';
-  for (let s = 1; s <= SUB; s++) {
+  for (let s = 1; s <= CFG.groups[cur - 1]; s++) {
     const b = document.createElement('button');
-    b.className = 'gchip' + (s === sub ? ' on' : '') + (voted[cur + '-' + s] ? ' done' : '');
+    b.className = 'gchip' + (s === sub ? ' on' : '') + (voted[uid(CLS, cur, s)] ? ' done' : '');
     b.textContent = '第' + s + '小组';
     b.onclick = () => { sub = s; renderSubGroups(); loadVoted(); };
     box.appendChild(b);
   }
 }
 function renderItems() {
+  $('#title').textContent = CFG.name + ' · 小组讲解评分';
+  $('#sub').textContent = STD
+    ? '每项 1—5 星 · 共十项 · 请对正在展示的小组评分'
+    : '每项 0—100 分 · 共五项 · 请对正在展示的搭档评分';
   const box = $('#items');
   box.innerHTML = '';
-  scores = Array(CFG.ITEMS.length).fill(0);
-  CFG.ITEMS.forEach((it, i) => {
+  scores = Array(itemCount).fill(0);
+  for (let i = 0; i < itemCount; i++) {
     const div = document.createElement('div');
     div.className = 'item';
-    div.innerHTML =
-      '<div class="ihead"><div><div class="iname"><span class="no">' + (i + 1) + '</span>' + it[0] + '</div>' +
-      '<div class="ihint">' + it[1] + '</div></div>' +
-      '<div class="stars">' + '<span>★</span>'.repeat(5) + '</div></div>';
-    box.appendChild(div);
-    const starsEl = div.querySelector('.stars');
-    starsEl.querySelectorAll('span').forEach((s, k) => {
-      s.onclick = () => { scores[i] = k + 1; paint(starsEl, scores[i]); };
-    });
-  });
+    if (STD) {
+      div.innerHTML =
+        '<div class="ihead"><div><div class="iname"><span class="no">' + (i + 1) + '</span>' + CFG.items[i][0] + '</div>' +
+        '<div class="ihint">' + CFG.items[i][1] + '</div></div>' +
+        '<div class="stars">' + '<span>★</span>'.repeat(5) + '</div></div>';
+      box.appendChild(div);
+      const el = div.querySelector('.stars');
+      el.querySelectorAll('span').forEach((sp, k) => {
+        sp.onclick = () => { scores[i] = k + 1; paintStars(el, scores[i]); };
+      });
+    } else {
+      div.innerHTML =
+        '<div class="ihead"><div><div class="iname"><span class="no">' + (i + 1) + '</span>' + CFG.studentItems[i] + '</div></div>' +
+        '<input type="number" class="num" min="0" max="100" step="1" placeholder="0-100"></div>';
+      box.appendChild(div);
+      div.querySelector('.num').oninput = e => { scores[i] = parseInt(e.target.value || '0', 10); };
+    }
+  }
 }
 function loadVoted() {
   const v = voted[key()];
-  scores = v && v.scores ? v.scores.slice() : Array(CFG.ITEMS.length).fill(0);
+  scores = v && v.scores ? v.scores.slice() : Array(itemCount).fill(0);
   $('#anon').checked = v ? !!v.anonymous : true;
   $('#name').value = v ? (v.name || '') : '';
   $('#comment').value = v ? (v.comment || '') : '';
   toggleName();
-  $('#items').querySelectorAll('.item').forEach((el, i) => {
-    paint(el.querySelector('.stars'), scores[i]);
-  });
+  if (STD) {
+    $('#items').querySelectorAll('.item').forEach((el, i) => {
+      paintStars(el.querySelector('.stars'), scores[i]);
+    });
+  } else {
+    $('#items').querySelectorAll('.num').forEach((inp, i) => { inp.value = scores[i] || ''; });
+  }
   $('#msg').textContent = v ? '该小组已评分，可修改后重新提交' : '';
 }
 function toggleName() { $('#nameRow').style.display = $('#anon').checked ? 'none' : 'block'; }
@@ -123,10 +132,15 @@ async function init() {
   renderGroups(); renderItems(); loadVoted();
   $('#anon').onchange = toggleName;
   $('#submit').onclick = async () => {
-    if (scores.some(s => !s)) { $('#msg').textContent = '尚有项目未评分，请完成全部十项'; return; }
+    if (STD) {
+      if (scores.some(s => !s)) { $('#msg').textContent = '尚有项目未评分，请完成全部'; return; }
+    } else {
+      if (scores.some(s => !s || s < 0 || s > 100)) { $('#msg').textContent = '请为每项填写 0-100 的分数'; return; }
+    }
     const j = await rpc('submit_vote', {
-      p_client_id: cid, p_role: 'student', p_grp: cur, p_subgrp: sub, p_scores: scores,
-      p_anonymous: $('#anon').checked, p_name: $('#name').value, p_comment: $('#comment').value,
+      p_client_id: cid, p_role: 'student', p_cls: CLS, p_grp: cur, p_subgrp: sub,
+      p_scores: scores, p_form: '', p_anonymous: $('#anon').checked,
+      p_name: $('#name').value, p_comment: $('#comment').value,
     });
     $('#msg').textContent = j.ok ? '评分已提交' : (j.msg || j.message || '提交失败，请检查网络');
     if (j.ok) {

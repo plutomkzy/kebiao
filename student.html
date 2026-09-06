@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#241708">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23b03a2e'/%3E%3Ctext x='32' y='43' font-size='34' text-anchor='middle' fill='%23f7ead0' font-family='serif'%3E%E8%AF%84%3C/text%3E%3C/svg%3E">
+<title>学生入口 · 课标讲解评分系统</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="panel">
+    <div class="head">
+      <span class="seal">生</span>
+      <h1>学生入口</h1>
+      <div class="sub">输入本班的班级码，进入本班评分页</div>
+    </div>
+    <input type="password" id="pw" placeholder="班级码" style="text-align:center;letter-spacing:6px">
+    <button class="btn primary" id="go" style="margin-top:12px">进入</button>
+    <div id="msg"></div>
+  </div>
+</div>
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+async function init() {
+  $('#go').onclick = async () => {
+    const pw = $('#pw').value;
+    if (!pw) { $('#msg').textContent = '请输入班级码'; return; }
+    const j = await enter(pw);
+    if (!j.ok) { $('#msg').textContent = j.msg || '验证失败，请重试'; return; }
+    if (j.role !== 'student') { $('#msg').textContent = '该密钥不是学生班级码，请从对应入口进入'; return; }
+    sessionStorage.setItem('role', 'student');
+    sessionStorage.setItem('cls', j.cls);
+    location.href = 'vote.html';
+  };
+  $('#pw').onkeydown = e => { if (e.key === 'Enter') $('#go').click(); };
+}
+init();
+</script>
+</body>
+</html>

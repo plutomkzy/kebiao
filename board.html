@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#241708">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23b03a2e'/%3E%3Ctext x='32' y='43' font-size='34' text-anchor='middle' fill='%23f7ead0' font-family='serif'%3E%E8%AF%84%3C/text%3E%3C/svg%3E">
-<title>实时汇总 · 课标讲解评分系统</title>
+<title>实时大屏 · 课标讲解评分系统</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -13,108 +13,77 @@
   <div class="panel">
     <div class="head">
       <span class="seal">榜</span>
-      <h1>小组讲解 · 实时得分</h1>
+      <h1 id="title">实时得分</h1>
       <div class="sub" id="clock">--</div>
     </div>
+
+    <div class="groups" id="clstabs"></div>
 
     <div class="note">点击任意行可聚焦该小组</div>
 
     <div class="tblwrap">
-      <table id="tbl">
-        <thead>
-          <tr><th>名次</th><th>组别</th><th>学生票数</th><th>学生均分</th><th>教师分</th><th>加权总分</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+      <table id="tbl"><thead></thead><tbody></tbody></table>
     </div>
 
     <div class="extras" id="comments"></div>
   </div>
 </div>
 <script src="config.js"></script>
+<script src="app.js"></script>
 <script>
 const $ = s => document.querySelector(s);
-const CFG = window.APP_CONFIG;
-const SUB = CFG.SUB_GROUPS_PER_GROUP || 1;
+let CLS = C.CLASS_IDS[0];
 let allVotes = [], focusKey = null;
 
-async function rpc(fn, body) {
-  const r = await fetch(CFG.SUPABASE_URL + '/rest/v1/rpc/' + fn, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: CFG.SUPABASE_ANON_KEY,
-      Authorization: 'Bearer ' + CFG.SUPABASE_ANON_KEY,
-    },
-    body: JSON.stringify(body),
+function renderClsTabs() {
+  const box = $('#clstabs');
+  box.innerHTML = '';
+  C.CLASS_IDS.forEach(id => {
+    const b = document.createElement('button');
+    b.className = 'gchip' + (id === CLS ? ' on' : '');
+    b.textContent = cfgOf(id).name;
+    b.onclick = () => { CLS = id; refresh(); };
+    box.appendChild(b);
   });
-  return r.json();
-}
-async function loadVotes() {
-  const r = await fetch(CFG.SUPABASE_URL + '/rest/v1/votes?select=*&order=ts.asc', {
-    headers: { apikey: CFG.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + CFG.SUPABASE_ANON_KEY },
-  });
-  if (!r.ok) return [];
-  return r.json();
-}
-function calc(votes) {
-  const gs = {};
-  for (let g = 1; g <= CFG.GROUP_COUNT; g++) {
-    for (let s = 1; s <= SUB; s++) {
-      gs[g + '-' + s] = { g, s, sv: 0, ss: 0, tv: 0, ts: 0, comments: [] };
-    }
-  }
-  votes.forEach(v => {
-    const d = gs[v.grp + '-' + (v.subgrp || 1)];
-    if (!d) return;
-    const pct = v.scores.reduce((a, b) => a + b, 0) * 2;
-    if (v.role === 'student') { d.sv++; d.ss += pct; }
-    else { d.tv++; d.ts += pct; }
-    if (v.comment && v.comment.trim()) {
-      d.comments.push({ who: v.anonymous ? '匿名' : (v.name || '匿名'), role: v.role, text: v.comment.trim() });
-    }
-  });
-  const rows = Object.values(gs).map(d => {
-    d.student_pct = d.sv ? Math.round(d.ss / d.sv * 10) / 10 : null;
-    d.teacher_pct = d.tv ? Math.round(d.ts / d.tv * 10) / 10 : null;
-    d.weighted = (d.student_pct != null && d.teacher_pct != null)
-      ? Math.round((d.student_pct * CFG.STUDENT_WEIGHT + d.teacher_pct * CFG.TEACHER_WEIGHT) * 10) / 10 : null;
-    return d;
-  });
-  rows.sort((a, b) => {
-    if (a.weighted != null && b.weighted != null) return b.weighted - a.weighted;
-    if (a.weighted != null) return -1;
-    if (b.weighted != null) return 1;
-    return (b.student_pct || 0) - (a.student_pct || 0) || a.g - b.g || a.s - b.s;
-  });
-  return rows;
 }
 async function refresh() {
+  const cfg = cfgOf(CLS);
+  renderClsTabs();
   allVotes = await loadVotes();
   const now = new Date();
-  $('#clock').textContent = '更新于 ' + now.toLocaleTimeString('zh-CN', { hour12: false }) + ' · 共 ' + allVotes.length + ' 票';
-  const rows = calc(allVotes);
+  const clsVotes = allVotes.filter(v => v.cls === CLS);
+  $('#title').textContent = cfg.name + ' · 实时得分';
+  $('#clock').textContent = '更新于 ' + now.toLocaleTimeString('zh-CN', { hour12: false }) + ' · ' + cfg.name + '共 ' + clsVotes.length + ' 票';
+  const rows = calcStats(allVotes, CLS);
+  const std = cfg.mode === 'standard';
+  $('#tbl thead').innerHTML = std
+    ? '<tr><th>名次</th><th>组别</th><th>学生票数</th><th>学生均分</th><th>教师分</th><th>加权总分</th></tr>'
+    : '<tr><th>名次</th><th>组别</th><th>学生票数</th><th>学生均分</th><th>教师讲课</th><th>教学设计</th><th>最终得分</th></tr>';
   const tb = $('#tbl tbody');
   tb.innerHTML = '';
   rows.forEach((r, i) => {
     const tr = document.createElement('tr');
-    if (focusKey === r.g + '-' + r.s) tr.className = 'fg';
-    const rank = r.weighted != null && i === 0 ? '<span class="rank g">1</span>'
-               : (r.weighted === null ? '—'
-                 : '<span class="rank ' + (i === 1 ? 's' : i === 2 ? 'b' : '') + '">' + (i + 1) + '</span>');
-    const teacher = r.teacher_pct != null
-      ? r.teacher_pct
-      : '待评';
-    const weighted = r.weighted != null ? '<b>' + r.weighted + '</b>' : '待教师打分';
+    if (focusKey === uid(CLS, r.g, r.s)) tr.className = 'fg';
+    const rank = r.final != null && i === 0 ? '<span class="rank g">1</span>'
+      : (r.final == null ? '—'
+        : '<span class="rank ' + (i === 1 ? 's' : i === 2 ? 'b' : '') + '">' + (i + 1) + '</span>');
     const pctbar = r.student_pct != null
       ? '<div class="pct"><i style="width:' + r.student_pct + '%"></i></div>' : '';
+    let cells;
+    if (std) {
+      cells = '<td>' + (r.student_pct != null ? r.student_pct : '—') + pctbar + '</td>' +
+        '<td>' + (r.teacher_pct != null ? r.teacher_pct : '待评') + '</td>' +
+        '<td>' + (r.final != null ? '<b>' + r.final + '</b>' : '待教师打分') + '</td>';
+    } else {
+      cells = '<td>' + (r.student_pct != null ? r.student_pct : '—') + pctbar + '</td>' +
+        '<td>' + (r.tL != null ? r.tL : '待评') + '</td>' +
+        '<td>' + (r.tD != null ? r.tD : '待评') + '</td>' +
+        '<td>' + (r.final != null ? '<b>' + r.final + '</b>' : '待出分') + '</td>';
+    }
     tr.innerHTML =
       '<td>' + rank + '</td><td><b>第' + r.g + '大组·第' + r.s + '小组</b></td>' +
-      '<td>' + r.sv + '</td>' +
-      '<td>' + (r.student_pct != null ? r.student_pct : '—') + pctbar + '</td>' +
-      '<td>' + teacher + '</td>' +
-      '<td>' + weighted + '</td>';
-    tr.onclick = () => { focusKey = (focusKey === r.g + '-' + r.s) ? null : r.g + '-' + r.s; refresh(); };
+      '<td>' + r.sv + '</td>' + cells;
+    tr.onclick = () => { focusKey = (focusKey === uid(CLS, r.g, r.s)) ? null : uid(CLS, r.g, r.s); refresh(); };
     tb.appendChild(tr);
   });
 
@@ -139,27 +108,7 @@ async function refresh() {
     cbox.appendChild(box);
   });
 }
-function exportCsv() {
-  const lines = ['大组,小组,角色,匿名,姓名,评语,'
-    + CFG.ITEMS.map((_, i) => '第' + (i + 1) + '项').join(',') + ',总分(百分)'];
-  allVotes.forEach(v => {
-    const pct = v.scores.reduce((a, b) => a + b, 0) * 2;
-    lines.push([
-      v.grp, v.subgrp || 1, v.role === 'teacher' ? '教师' : '学生', v.anonymous ? '是' : '否',
-      v.anonymous ? '' : (v.name || ''), (v.comment || '').replace(/,/g, '，').replace(/\n/g, ' '),
-      ...v.scores, pct,
-    ].join(','));
-  });
-  const blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'scores.csv';
-  a.click();
-}
-async function init() {
-  refresh();
-  setInterval(refresh, 3000);
-}
+init = function () { refresh(); setInterval(refresh, 3000); };
 init();
 </script>
 </body>

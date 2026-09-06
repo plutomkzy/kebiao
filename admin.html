@@ -11,7 +11,6 @@
 <body>
 <div class="wrap board">
   <div class="panel">
-
     <!-- 登录 -->
     <div id="login">
       <div class="head">
@@ -31,7 +30,8 @@
         <h1>管理后台 <span class="badge">仅管理员</span></h1>
         <div class="sub" id="clock">--</div>
       </div>
-      <p class="note">成绩以百分制加权总分为准（学生 70% + 教师 30%）</p>
+
+      <div class="groups" id="clstabs"></div>
       <div class="statchips" id="chips"></div>
 
       <div style="text-align:center">
@@ -39,21 +39,15 @@
         <button class="btn small" id="copyBtn">复制成绩单</button>
         <button class="btn small" id="printBtn">打印成绩单</button>
         <button class="btn small" id="csvBtn">导出数据</button>
-        <button class="btn small ghost" id="resetBtn">清空数据</button>
+        <button class="btn small ghost" id="resetBtn">清空当前班数据</button>
       </div>
 
       <div class="tblwrap">
-        <table id="tbl">
-          <thead>
-            <tr><th>组别</th><th>学生票</th><th>学生均分</th><th>教师分</th><th>加权总分</th><th>排名</th><th>明细</th></tr>
-          </thead>
-          <tbody></tbody>
-        </table>
+        <table id="tbl"><thead></thead><tbody></tbody></table>
       </div>
 
       <div class="report print-area" id="report" style="display:none">
-        <h2>《语文课程标准》小组讲解 · 成绩单</h2>
-        <p class="note" style="margin:0 0 10px">各组为 2 人小组；组内成员按本组成绩计分（百分制加权总分）</p>
+        <h2 id="rptTitle">成绩单</h2>
         <div id="reportBody"></div>
         <div class="rdate" id="reportDate"></div>
       </div>
@@ -63,106 +57,83 @@
   </div>
 </div>
 <script src="config.js"></script>
+<script src="app.js"></script>
 <script>
 const $ = s => document.querySelector(s);
-const CFG = window.APP_CONFIG;
-const SUB = CFG.SUB_GROUPS_PER_GROUP || 1;
+let CLS = C.CLASS_IDS[0];
 let allVotes = [];
 const openSet = new Set();
 
-async function rpc(fn, body) {
-  const r = await fetch(CFG.SUPABASE_URL + '/rest/v1/rpc/' + fn, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: CFG.SUPABASE_ANON_KEY,
-      Authorization: 'Bearer ' + CFG.SUPABASE_ANON_KEY,
-    },
-    body: JSON.stringify(body),
+function renderClsTabs() {
+  const box = $('#clstabs');
+  box.innerHTML = '';
+  C.CLASS_IDS.forEach(id => {
+    const b = document.createElement('button');
+    b.className = 'gchip' + (id === CLS ? ' on' : '');
+    b.textContent = cfgOf(id).name;
+    b.onclick = () => { CLS = id; refresh(); };
+    box.appendChild(b);
   });
-  return r.json();
-}
-async function loadVotes() {
-  const r = await fetch(CFG.SUPABASE_URL + '/rest/v1/votes?select=*&order=ts.asc', {
-    headers: { apikey: CFG.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + CFG.SUPABASE_ANON_KEY },
-  });
-  if (!r.ok) return [];
-  return r.json();
-}
-function calc(votes) {
-  const gs = {};
-  for (let g = 1; g <= CFG.GROUP_COUNT; g++) {
-    for (let s = 1; s <= SUB; s++) {
-      gs[g + '-' + s] = { g, s, sv: 0, ss: 0, tv: 0, ts: 0, votes: [] };
-    }
-  }
-  votes.forEach(v => {
-    const d = gs[v.grp + '-' + (v.subgrp || 1)];
-    if (!d) return;
-    const pct = v.scores.reduce((a, b) => a + b, 0) * 2;
-    if (v.role === 'student') { d.sv++; d.ss += pct; }
-    else { d.tv++; d.ts += pct; }
-    d.votes.push(v);
-  });
-  const rows = Object.values(gs).map(d => {
-    d.student_pct = d.sv ? Math.round(d.ss / d.sv * 10) / 10 : null;
-    d.teacher_pct = d.tv ? Math.round(d.ts / d.tv * 10) / 10 : null;
-    d.weighted = (d.student_pct != null && d.teacher_pct != null)
-      ? Math.round((d.student_pct * CFG.STUDENT_WEIGHT + d.teacher_pct * CFG.TEACHER_WEIGHT) * 10) / 10 : null;
-    return d;
-  });
-  rows.sort((a, b) => {
-    if (a.weighted != null && b.weighted != null) return b.weighted - a.weighted;
-    if (a.weighted != null) return -1;
-    if (b.weighted != null) return 1;
-    return (b.student_pct || 0) - (a.student_pct || 0) || a.g - b.g || a.s - b.s;
-  });
-  return rows;
-}
-function fmtTime(ts) {
-  const d = new Date(ts);
-  return d.toLocaleDateString('zh-CN') + ' ' + d.toLocaleTimeString('zh-CN', { hour12: false });
 }
 async function refresh() {
+  const cfg = cfgOf(CLS);
+  renderClsTabs();
   allVotes = await loadVotes();
-  const now = new Date();
-  $('#clock').textContent = '更新于 ' + now.toLocaleTimeString('zh-CN', { hour12: false }) + ' · 共 ' + allVotes.length + ' 票';
-  const rows = calc(allVotes);
-  const st = allVotes.filter(v => v.role === 'student').length;
-  const tn = allVotes.filter(v => v.role === 'teacher').length;
-  const done = rows.filter(r => r.weighted != null).length;
+  const clsVotes = allVotes.filter(v => v.cls === CLS);
+  const st = clsVotes.filter(v => v.role === 'student').length;
+  const tn = clsVotes.filter(v => v.role === 'teacher').length;
+  const units = unitList(CLS).length;
+  const rows = calcStats(allVotes, CLS);
+  const done = rows.filter(r => r.final != null).length;
+  $('#clock').textContent = '当前：' + cfg.name + ' · 更新于 ' + new Date().toLocaleTimeString('zh-CN', { hour12: false }) + ' · 共 ' + clsVotes.length + ' 票';
   $('#chips').innerHTML =
-    '<span class="chip">总票数 <b>' + allVotes.length + '</b></span>' +
+    '<span class="chip">总票数 <b>' + clsVotes.length + '</b></span>' +
     '<span class="chip">学生票 <b>' + st + '</b></span>' +
     '<span class="chip">教师票 <b>' + tn + '</b></span>' +
-    '<span class="chip">已出分 <b>' + done + '</b> / ' + (CFG.GROUP_COUNT * SUB) + ' 个小组</span>';
+    '<span class="chip">已出分 <b>' + done + '</b> / ' + units + ' 组</span>';
 
+  const std = cfg.mode === 'standard';
+  $('#tbl thead').innerHTML = std
+    ? '<tr><th>组别</th><th>学生票</th><th>学生均分</th><th>教师分</th><th>加权总分</th><th>排名</th><th>明细</th></tr>'
+    : '<tr><th>组别</th><th>学生票</th><th>学生均分</th><th>教师讲课</th><th>教学设计</th><th>最终得分</th><th>排名</th><th>明细</th></tr>';
   const tb = $('#tbl tbody');
   tb.innerHTML = '';
   rows.forEach((r, i) => {
     const tr = document.createElement('tr');
-    const rank = r.weighted != null
+    const rank = r.final != null
       ? '<span class="rank ' + (i === 0 ? 'g' : i === 1 ? 's' : i === 2 ? 'b' : '') + '">' + (i + 1) + '</span>'
       : '—';
-    const teacher = r.teacher_pct != null ? r.teacher_pct + '（' + r.tv + '票）' : '待评';
     const pctbar = r.student_pct != null ? '<div class="pct"><i style="width:' + r.student_pct + '%"></i></div>' : '';
+    let cells;
+    if (std) {
+      cells = '<td>' + (r.student_pct != null ? r.student_pct : '—') + pctbar + '</td>' +
+        '<td>' + (r.teacher_pct != null ? r.teacher_pct + '（' + r.tv + '票）' : '待评') + '</td>' +
+        '<td>' + (r.final != null ? '<b>' + r.final + '</b>' : '待教师打分') + '</td>';
+    } else {
+      cells = '<td>' + (r.student_pct != null ? r.student_pct : '—') + pctbar + '</td>' +
+        '<td>' + (r.tL != null ? r.tL : '待评') + '</td>' +
+        '<td>' + (r.tD != null ? r.tD : '待评') + '</td>' +
+        '<td>' + (r.final != null ? '<b>' + r.final + '</b>' : '待出分') + '</td>';
+    }
     tr.innerHTML =
-      '<td><b>第' + r.g + '大组·第' + r.s + '小组</b></td><td>' + r.sv + '</td>' +
-      '<td>' + (r.student_pct != null ? r.student_pct : '—') + pctbar + '</td>' +
-      '<td>' + teacher + '</td>' +
-      '<td>' + (r.weighted != null ? '<b>' + r.weighted + '</b>' : '待教师打分') + '</td>' +
+      '<td><b>第' + r.g + '大组·第' + r.s + '小组</b></td><td>' + r.sv + '</td>' + cells +
       '<td>' + rank + '</td>' +
       '<td><button class="dbtn">' + (r.votes.length ? '展开' : '无') + '</button></td>';
     tb.appendChild(tr);
-    if (openSet.has(r.g + '-' + r.s)) {
+    const key = uid(CLS, r.g, r.s);
+    if (openSet.has(key)) {
       expandDetail(tr, r);
       tr.querySelector('.dbtn').textContent = '收起';
     }
     tr.querySelector('.dbtn').onclick = () => { toggleDetail(tr, r); };
   });
 }
+function roleLabel(v) {
+  if (v.role === 'student') return '生·';
+  return v.form === 'lecture' ? '师·讲课' : v.form === 'design' ? '师·设计' : '师·';
+}
 function toggleDetail(tr, r) {
-  const key = r.g + '-' + r.s;
+  const key = uid(CLS, r.g, r.s);
   if (openSet.has(key)) {
     openSet.delete(key);
     let n = tr.nextElementSibling;
@@ -184,77 +155,88 @@ function expandDetail(tr, r) {
     d.className = 'dvote' + (v.role === 'teacher' ? ' teacher' : '');
     d.innerHTML =
       '<span class="t">' + fmtTime(v.ts) + '</span>' +
-      (v.role === 'teacher' ? '师·' : '生·') +
-      (v.anonymous ? '匿名' : (v.name || '匿名')) +
-      '<span class="sc">' + v.scores.join(' ') + ' 星</span>' +
-      (v.scores.reduce((a, b) => a + b, 0) * 2) + '分' +
-      (v.comment ? '<br><span class="cm">评语：' + v.comment + '</span>' : '');
+      roleLabel(v) + (v.anonymous ? '匿名' : (v.name || '匿名')) +
+      '<span class="sc">' + v.scores.join(' ') + '</span>' +
+      (v.comment ? '<br><span class="cm">评语：' + esc(v.comment) + '</span>' : '');
     tr.after(d);
   });
 }
-function buildReport() {
-  const rows = calc(allVotes);
-  const done = rows.filter(r => r.weighted != null);
-  const und = rows.filter(r => r.weighted == null && (r.sv || r.tv));
-  $('#reportBody').innerHTML = done.map((r, i) =>
-    '<div class="rline">第' + r.g + '大组·第' + r.s + '小组 —— 学生均分 <b>' + r.student_pct +
-    '</b> · 教师分 <b>' + r.teacher_pct + '</b> · 加权总分 <b>' + r.weighted +
-    '</b>（第' + (i + 1) + '名）</div>').join('') +
-    und.map(r => '<div class="rline">第' + r.g + '大组·第' + r.s +
-      '小组 —— 学生均分 ' + (r.student_pct != null ? r.student_pct : '—') +
-      ' · 教师分 待评 · 暂无法出分</div>').join('');
+async function buildReport() {
+  const cfg = cfgOf(CLS);
+  const rows = calcStats(allVotes, CLS);
+  $('#rptTitle').textContent = cfg.name + ' · 成绩单';
+  let n = 0;
+  const doneLines = [], undLines = [];
+  rows.forEach(r => {
+    if (r.final == null) {
+      if (r.sv || r.tv || r.tLCount || r.tDCount) {
+        undLines.push('<div class="rline">第' + r.g + '大组·第' + r.s + '小组 —— 部分评分未完成，暂无法出分</div>');
+      }
+      return;
+    }
+    n++;
+    doneLines.push('<div class="rline">' + (cfg.mode === 'standard'
+      ? '第' + r.g + '大组·第' + r.s + '小组 —— 学生均分 <b>' + r.student_pct + '</b> · 教师分 <b>' + r.teacher_pct + '</b> · 加权总分 <b>' + r.final + '</b>（第' + n + '名）'
+      : '第' + r.g + '大组·第' + r.s + '小组 —— 学生均分 <b>' + r.student_pct + '</b> · 教师讲课 <b>' + r.tL + '</b> · 教学设计 <b>' + r.tD + '</b> · 最终得分 <b>' + r.final + '</b>（第' + n + '名）') + '</div>');
+  });
+  $('#reportBody').innerHTML = doneLines.join('') + undLines.join('');
   $('#reportDate').textContent = '统计时间：' + fmtTime(new Date().toISOString());
   $('#report').style.display = 'block';
   $('#report').scrollIntoView({ behavior: 'smooth' });
 }
 function reportText() {
-  const rows = calc(allVotes);
-  const lines = ['《语文课程标准》小组讲解 · 成绩单', ''];
+  const cfg = cfgOf(CLS);
+  const rows = calcStats(allVotes, CLS);
+  const lines = [cfg.name + ' · 成绩单', ''];
   let n = 0;
   rows.forEach(r => {
-    if (r.weighted == null) return;
+    if (r.final == null) return;
     n++;
-    lines.push('第' + r.g + '大组·第' + r.s + '小组 —— 学生均分 ' + r.student_pct + ' · 教师分 ' +
-      r.teacher_pct + ' · 加权总分 ' + r.weighted + '（第' + n + '名）');
+    lines.push(cfg.mode === 'standard'
+      ? '第' + r.g + '大组·第' + r.s + '小组 —— 学生均分 ' + r.student_pct + ' · 教师分 ' + r.teacher_pct + ' · 加权总分 ' + r.final + '（第' + n + '名）'
+      : '第' + r.g + '大组·第' + r.s + '小组 —— 学生均分 ' + r.student_pct + ' · 教师讲课 ' + r.tL + ' · 教学设计 ' + r.tD + ' · 最终得分 ' + r.final + '（第' + n + '名）');
   });
   lines.push('', '统计时间：' + fmtTime(new Date().toISOString()));
   return lines.join('\n');
 }
 function exportCsv() {
-  const lines = ['大组,小组,角色,匿名,姓名,评语,'
-    + CFG.ITEMS.map((_, i) => '第' + (i + 1) + '项').join(',') + ',总分(百分)'];
-  allVotes.forEach(v => {
-    const pct = v.scores.reduce((a, b) => a + b, 0) * 2;
+  const cfg = cfgOf(CLS);
+  const maxItems = Math.max(...allVotes.map(v => v.scores.length), 1);
+  const lines = ['班级,大组,小组,角色,表单,匿名,姓名,评语,'
+    + Array.from({ length: maxItems }, (_, i) => '第' + (i + 1) + '项').join(',') + ',合计'];
+  allVotes.filter(v => v.cls === CLS).forEach(v => {
     lines.push([
-      v.grp, v.subgrp || 1, v.role === 'teacher' ? '教师' : '学生', v.anonymous ? '是' : '否',
-      v.anonymous ? '' : (v.name || ''), (v.comment || '').replace(/,/g, '，').replace(/\n/g, ' '),
-      ...v.scores, pct,
+      CLS, v.grp, v.subgrp || 1,
+      v.role === 'student' ? '学生' : (v.form === 'lecture' ? '教师·讲课' : v.form === 'design' ? '教师·设计' : '教师'),
+      v.form || '', v.anonymous ? '是' : '否', v.anonymous ? '' : (v.name || ''),
+      (v.comment || '').replace(/,/g, '，').replace(/\n/g, ' '),
+      ...v.scores, v.scores.reduce((a, b) => a + b, 0),
     ].join(','));
   });
   const blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'scores.csv';
+  a.download = cfg.name + '数据.csv';
   a.click();
 }
 async function init() {
-  if (sessionStorage.getItem('adm') === '1') { $('#login').style.display = 'none'; $('#dash').style.display = 'block'; refresh(); setInterval(refresh, 5000); }
+  if (sessionStorage.getItem('role') === 'admin') { $('#login').style.display = 'none'; $('#dash').style.display = 'block'; refresh(); setInterval(refresh, 5000); }
   $('#go').onclick = async () => {
-    const j = await rpc('verify_admin', { p_password: $('#pw').value });
-    if (!j.ok) { $('#msg').textContent = j.msg; return; }
-    sessionStorage.setItem('adm', '1');
+    const j = await enter($('#pw').value);
+    if (!j.ok || j.role !== 'admin') { $('#msg').textContent = j.ok ? '该密钥不是管理员口令' : (j.msg || '验证失败'); return; }
+    sessionStorage.setItem('role', 'admin');
     $('#login').style.display = 'none'; $('#dash').style.display = 'block';
     refresh(); setInterval(refresh, 5000);
   };
   $('#pw').onkeydown = e => { if (e.key === 'Enter') $('#go').click(); };
   $('#reportBtn').onclick = buildReport;
   $('#copyBtn').onclick = async () => { await navigator.clipboard.writeText(reportText()); alert('成绩单已复制'); };
-  $('#printBtn').onclick = () => { buildReport(); document.body.classList.add('printing'); setTimeout(() => { window.print(); document.body.classList.remove('printing'); }, 100); };
+  $('#printBtn').onclick = () => { buildReport().then(() => { document.body.classList.add('printing'); setTimeout(() => { window.print(); document.body.classList.remove('printing'); }, 100); }); };
   $('#csvBtn').onclick = exportCsv;
   $('#resetBtn').onclick = async () => {
-    const pw = prompt('清空全部评分数据？请输入管理员口令确认：');
+    const pw = prompt('清空【' + cfgOf(CLS).name + '】的全部评分数据？请输入管理员口令确认：');
     if (!pw) return;
-    const j = await rpc('admin_reset', { p_password: pw });
+    const j = await rpc('admin_reset', { p_password: pw, p_cls: CLS });
     alert(j.ok ? j.msg : (j.msg || j.message || '操作失败'));
     refresh();
   };

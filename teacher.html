@@ -11,110 +11,264 @@
 <body>
 <div class="wrap">
   <div class="panel">
-    <div class="head">
-      <span class="seal">师</span>
-      <h1>小组讲解评分 <span class="badge">教师票 · 权重30%</span></h1>
-      <div class="sub">教师评分按 30% 计入小组最终成绩（学生部分占 70%）</div>
+    <!-- 登录 -->
+    <div id="login">
+      <div class="head">
+        <span class="seal">师</span>
+        <h1>教师入口</h1>
+        <div class="sub">输入教师口令 · 可切换 3 / 4 / 5 班</div>
+      </div>
+      <input type="password" id="pw" placeholder="教师口令" style="text-align:center;letter-spacing:4px">
+      <button class="btn primary" id="go" style="margin-top:12px">进入</button>
+      <div id="msg"></div>
     </div>
 
-    <input type="password" id="password" placeholder="教师口令" style="text-align:center;letter-spacing:4px">
+    <!-- 主界面 -->
+    <div id="dash" style="display:none">
+      <div class="head">
+        <span class="seal">师</span>
+        <h1 id="title">教师评分</h1>
+        <div class="sub" id="sub"></div>
+      </div>
 
-    <div class="groups" id="groups"></div>
-    <div class="groups" id="subgroups"></div>
-    <div id="items"></div>
+      <div class="groups" id="clstabs"></div>
+      <div class="groups" id="groups"></div>
+      <div class="groups" id="subgroups"></div>
 
-    <div class="row">
-      <input type="checkbox" id="anon" style="width:22px;height:22px;margin:0">
-      <label for="anon" style="cursor:pointer">匿名点评（分数仍计入教师分）</label>
+      <div id="formArea"></div>
+
+      <div id="tmsg"></div>
+
+      <div style="text-align:center;margin-top:14px">
+        <button class="btn small" id="reportBtn">查看成绩单</button>
+        <button class="btn small" id="copyBtn" style="display:none">复制成绩单</button>
+        <button class="btn small" id="printBtn" style="display:none">打印成绩单</button>
+        <button class="btn small" id="csvBtn" style="display:none">导出成绩单CSV</button>
+      </div>
+      <div class="report print-area" id="report" style="display:none">
+        <h2 id="rptTitle">成绩单</h2>
+        <div id="reportBody"></div>
+        <div class="rdate" id="reportDate"></div>
+      </div>
     </div>
-    <textarea id="comment" placeholder="评语（选填）"></textarea>
-
-    <button class="btn primary" id="submit" style="margin-top:20px">提交教师评分</button>
-    <div id="msg"></div>
   </div>
 </div>
 <script src="config.js"></script>
+<script src="app.js"></script>
 <script>
 const $ = s => document.querySelector(s);
-const CFG = window.APP_CONFIG;
-const SUB = CFG.SUB_GROUPS_PER_GROUP || 1;
-let cur = 1, sub = 1, scores = [];
+let CLS = C.CLASS_IDS[0];
 const tcid = localStorage.getItem('tcid') || (() => { const v = (crypto.randomUUID && crypto.randomUUID()) || Math.random().toString(36).slice(2); localStorage.setItem('tcid', v); return v; })();
+let cur = 1, sub = 1, starScores = [], lecScores = [], desScores = [];
 
-async function rpc(fn, body) {
-  const r = await fetch(CFG.SUPABASE_URL + '/rest/v1/rpc/' + fn, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: CFG.SUPABASE_ANON_KEY,
-      Authorization: 'Bearer ' + CFG.SUPABASE_ANON_KEY,
-    },
-    body: JSON.stringify(body),
+function curCfg() { return cfgOf(CLS); }
+
+function renderClsTabs() {
+  const box = $('#clstabs');
+  box.innerHTML = '';
+  C.CLASS_IDS.forEach(id => {
+    const b = document.createElement('button');
+    b.className = 'gchip' + (id === CLS ? ' on' : '');
+    b.textContent = cfgOf(id).name;
+    b.onclick = () => { CLS = id; renderAll(); };
+    box.appendChild(b);
   });
-  return r.json();
-}
-function paint(starsEl, val) {
-  starsEl.querySelectorAll('span').forEach((s, i) => s.classList.toggle('on', i < val));
 }
 function renderGroups() {
   const box = $('#groups');
   box.innerHTML = '';
-  for (let g = 1; g <= CFG.GROUP_COUNT; g++) {
+  curCfg().groups.forEach((n, i) => {
+    const g = i + 1;
     const b = document.createElement('button');
     b.className = 'gchip' + (g === cur ? ' on' : '');
     b.textContent = '第' + g + '大组';
-    b.onclick = () => { cur = g; renderGroups(); renderSubGroups(); resetScores(); };
+    b.onclick = () => { cur = g; renderGroups(); renderSubGroups(); resetForms(); };
     box.appendChild(b);
-  }
+  });
   renderSubGroups();
 }
 function renderSubGroups() {
   const box = $('#subgroups');
   box.innerHTML = '';
-  for (let s = 1; s <= SUB; s++) {
+  for (let s = 1; s <= curCfg().groups[cur - 1]; s++) {
     const b = document.createElement('button');
     b.className = 'gchip' + (s === sub ? ' on' : '');
     b.textContent = '第' + s + '小组';
-    b.onclick = () => { sub = s; renderSubGroups(); resetScores(); };
+    b.onclick = () => { sub = s; renderSubGroups(); resetForms(); };
     box.appendChild(b);
   }
 }
-function resetScores() {
-  scores = Array(CFG.ITEMS.length).fill(0);
-  $('#items').querySelectorAll('.item').forEach((el, i) => paint(el.querySelector('.stars'), 0));
-  $('#msg').textContent = '';
+function resetForms() {
+  starScores = []; lecScores = []; desScores = [];
+  $('#formArea').innerHTML = '';
+  $('#tmsg').textContent = '';
+  renderForm();
 }
-function renderItems() {
-  const box = $('#items');
-  box.innerHTML = '';
-  CFG.ITEMS.forEach((it, i) => {
-    const div = document.createElement('div');
-    div.className = 'item';
-    div.innerHTML =
-      '<div class="ihead"><div><div class="iname"><span class="no">' + (i + 1) + '</span>' + it[0] + '</div>' +
-      '<div class="ihint">' + it[1] + '</div></div>' +
-      '<div class="stars">' + '<span>★</span>'.repeat(5) + '</div></div>';
-    box.appendChild(div);
-    const starsEl = div.querySelector('.stars');
-    starsEl.querySelectorAll('span').forEach((s, k) => {
-      s.onclick = () => { scores[i] = k + 1; paint(starsEl, scores[i]); };
+function paintStars(el, val) {
+  el.querySelectorAll('span').forEach((s, i) => s.classList.toggle('on', i < val));
+}
+function renderForm() {
+  const cfg = curCfg();
+  $('#title').textContent = cfg.name + ' · 教师评分';
+  $('#sub').textContent = cfg.mode === 'standard'
+    ? '教师评分按 30% 计入小组最终成绩（学生部分占 70%）'
+    : '每对搭档：讲课评分表 + 教学设计评分表分别提交；最终 =（师讲课×40% + 生平均×60%）×60% + 教学设计×40%';
+  const box = $('#formArea');
+  if (cfg.mode === 'standard') {
+    box.innerHTML = '';
+    starScores = Array(cfg.items.length).fill(0);
+    cfg.items.forEach((it, i) => {
+      const div = document.createElement('div');
+      div.className = 'item';
+      div.innerHTML =
+        '<div class="ihead"><div><div class="iname"><span class="no">' + (i + 1) + '</span>' + it[0] + '</div>' +
+        '<div class="ihint">' + it[1] + '</div></div>' +
+        '<div class="stars">' + '<span>★</span>'.repeat(5) + '</div></div>';
+      box.appendChild(div);
+      const el = div.querySelector('.stars');
+      el.querySelectorAll('span').forEach((sp, k) => {
+        sp.onclick = () => { starScores[i] = k + 1; paintStars(el, starScores[i]); };
+      });
     });
+    box.insertAdjacentHTML('beforeend',
+      '<textarea id="cm" placeholder="评语（选填）"></textarea>' +
+      '<button class="btn primary" id="subStd" style="margin-top:16px">提交教师评分</button>');
+    $('#subStd').onclick = async () => {
+      if (starScores.some(s => !s)) { $('#tmsg').textContent = '尚有项目未评分，请完成全部'; return; }
+      const j = await rpc('submit_vote', {
+        p_client_id: tcid, p_role: 'teacher', p_cls: CLS, p_grp: cur, p_subgrp: sub,
+        p_scores: starScores, p_form: '', p_anonymous: false, p_name: '',
+        p_comment: $('#cm').value, p_password: $('#pw').value,
+      });
+      $('#tmsg').textContent = j.ok ? '教师评分已提交：' + cfg.name + ' 第' + cur + '大组·第' + sub + '小组' : (j.msg || j.message || '提交失败');
+    };
+  } else {
+    // 4班：两张表
+    box.innerHTML = '';
+    lecScores = Array(cfg.lectureItems.length).fill(0);
+    desScores = Array(cfg.designItems.length).fill(0);
+    let html = '<div class="fblock"><h3>主讲人讲课教师评分表</h3>';
+    cfg.lectureItems.forEach((it, i) => {
+      html += '<div class="formrow"><span class="fname"><span class="no">' + (i + 1) + '</span>' + it[0] + '（' + it[1] + '分）</span>' +
+        '<input type="number" class="num" min="0" max="' + it[1] + '" placeholder="0-' + it[1] + '" data-idx="' + i + '" data-kind="lec"></div>';
+    });
+    html += '<div class="ftotal">讲课合计：<b id="lecTotal">0</b> / 100</div>';
+    html += '<button class="btn primary" id="subLec" style="margin-top:12px">提交讲课评分</button></div>';
+
+    html += '<div class="fblock"><h3>教学设计（教案+PPT）教师评分表</h3>';
+    cfg.designItems.forEach((it, i) => {
+      html += '<div class="formrow"><span class="fname"><span class="no">' + (i + 1) + '</span>' + it[0] + '（' + it[1] + '分）</span>' +
+        '<input type="number" class="num" min="0" max="' + it[1] + '" placeholder="0-' + it[1] + '" data-idx="' + i + '" data-kind="des"></div>';
+    });
+    html += '<div class="ftotal">设计合计：<b id="desTotal">0</b> / 100</div>';
+    html += '<textarea id="cm2" placeholder="评语"></textarea>';
+    html += '<button class="btn primary" id="subDes" style="margin-top:12px">提交教学设计评分</button></div>';
+    box.innerHTML = html;
+
+    box.querySelectorAll('.num').forEach(inp => {
+      inp.oninput = () => {
+        const v = parseInt(inp.value || '0', 10);
+        if (inp.dataset.kind === 'lec') { lecScores[+inp.dataset.idx] = v; $('#lecTotal').textContent = lecScores.reduce((a, b) => a + b, 0); }
+        else { desScores[+inp.dataset.idx] = v; $('#desTotal').textContent = desScores.reduce((a, b) => a + b, 0); }
+      };
+    });
+    $('#subLec').onclick = async () => {
+      if (lecScores.some(s => !s) || lecScores.some(s => s < 0)) { $('#tmsg').textContent = '请完成讲课表全部 4 项'; return; }
+      const j = await rpc('submit_vote', {
+        p_client_id: tcid, p_role: 'teacher', p_cls: CLS, p_grp: cur, p_subgrp: sub,
+        p_scores: lecScores, p_form: 'lecture', p_anonymous: false, p_name: '',
+        p_comment: '', p_password: $('#pw').value,
+      });
+      $('#tmsg').textContent = j.ok ? '讲课评分已提交：' + cfg.name + ' 第' + cur + '大组·第' + sub + '小组' : (j.msg || j.message || '提交失败');
+    };
+    $('#subDes').onclick = async () => {
+      if (desScores.some(s => !s) || desScores.some(s => s < 0)) { $('#tmsg').textContent = '请完成教学设计表全部 4 项'; return; }
+      const j = await rpc('submit_vote', {
+        p_client_id: tcid, p_role: 'teacher', p_cls: CLS, p_grp: cur, p_subgrp: sub,
+        p_scores: desScores, p_form: 'design', p_anonymous: false, p_name: '',
+        p_comment: $('#cm2').value, p_password: $('#pw').value,
+      });
+      $('#tmsg').textContent = j.ok ? '教学设计评分已提交：' + cfg.name + ' 第' + cur + '大组·第' + sub + '小组' : (j.msg || j.message || '提交失败');
+    };
+  }
+}
+function renderAll() { renderClsTabs(); cur = 1; sub = 1; renderGroups(); resetForms(); }
+async function buildReport() {
+  const cfg = curCfg();
+  const rows = calcStats(await loadVotes(), CLS);
+  $('#rptTitle').textContent = cfg.name + ' · 成绩单';
+  let n = 0;
+  const doneLines = [], undLines = [];
+  rows.forEach(r => {
+    if (r.final == null) {
+      if (r.sv || r.tv || r.tLCount || r.tDCount) {
+        undLines.push('<div class="rline">第' + r.g + '大组·第' + r.s + '小组 —— 部分评分未完成，暂无法出分</div>');
+      }
+      return;
+    }
+    n++;
+    const line = cfg.mode === 'standard'
+      ? '第' + r.g + '大组·第' + r.s + '小组 —— 学生均分 <b>' + r.student_pct + '</b> · 教师分 <b>' + r.teacher_pct + '</b> · 加权总分 <b>' + r.final + '</b>（第' + n + '名）'
+      : '第' + r.g + '大组·第' + r.s + '小组 —— 学生均分 <b>' + r.student_pct + '</b> · 教师讲课 <b>' + r.tL + '</b> · 教学设计 <b>' + r.tD + '</b> · 最终得分 <b>' + r.final + '</b>（第' + n + '名）';
+    doneLines.push('<div class="rline">' + line + '</div>');
   });
-  resetScores();
+  $('#reportBody').innerHTML = doneLines.join('') + undLines.join('');
+  $('#reportDate').textContent = '统计时间：' + fmtTime(new Date().toISOString());
+  $('#report').style.display = 'block';
+  $('#copyBtn').style.display = $('#printBtn').style.display = $('#csvBtn').style.display = 'inline-block';
+  $('#report').scrollIntoView({ behavior: 'smooth' });
+}
+async function reportText() {
+  const cfg = curCfg();
+  const rows = calcStats(await loadVotes(), CLS);
+  const lines = [cfg.name + ' · 成绩单', ''];
+  let n = 0;
+  rows.forEach(r => {
+    if (r.final == null) return;
+    n++;
+    lines.push(cfg.mode === 'standard'
+      ? '第' + r.g + '大组·第' + r.s + '小组 —— 学生均分 ' + r.student_pct + ' · 教师分 ' + r.teacher_pct + ' · 加权总分 ' + r.final + '（第' + n + '名）'
+      : '第' + r.g + '大组·第' + r.s + '小组 —— 学生均分 ' + r.student_pct + ' · 教师讲课 ' + r.tL + ' · 教学设计 ' + r.tD + ' · 最终得分 ' + r.final + '（第' + n + '名）');
+  });
+  lines.push('', '统计时间：' + fmtTime(new Date().toISOString()));
+  return lines.join('\n');
+}
+async function exportReportCsv() {
+  const cfg = curCfg();
+  const rows = calcStats(await loadVotes(), CLS);
+  const head = cfg.mode === 'standard'
+    ? ['大组', '小组', '学生均分', '教师分', '加权总分', '排名']
+    : ['大组', '小组', '学生均分', '教师讲课', '教学设计', '最终得分', '排名'];
+  const lines = [head.join(',')];
+  let n = 0;
+  rows.forEach(r => {
+    if (r.final == null) return;
+    n++;
+    const row = cfg.mode === 'standard'
+      ? [r.g, r.s, r.student_pct, r.teacher_pct, r.final, n]
+      : [r.g, r.s, r.student_pct, r.tL, r.tD, r.final, n];
+    lines.push(row.join(','));
+  });
+  const blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = cfg.name + '成绩单.csv';
+  a.click();
 }
 async function init() {
-  renderGroups(); renderItems();
-  $('#submit').onclick = async () => {
-    if (!$('#password').value) { $('#msg').textContent = '请输入教师口令'; return; }
-    if (scores.some(s => !s)) { $('#msg').textContent = '尚有项目未评分，请完成全部十项'; return; }
-    const j = await rpc('submit_vote', {
-      p_client_id: tcid, p_role: 'teacher', p_grp: cur, p_subgrp: sub, p_scores: scores,
-      p_anonymous: $('#anon').checked, p_name: '', p_comment: $('#comment').value,
-      p_password: $('#password').value,
-    });
-    $('#msg').textContent = j.ok ? ('教师评分已提交：第' + cur + '大组·第' + sub + '小组') : (j.msg || j.message || '提交失败，请检查网络');
-    if (j.ok) { resetScores(); $('#comment').value = ''; }
+  if (sessionStorage.getItem('role') === 'teacher') { $('#login').style.display = 'none'; $('#dash').style.display = 'block'; renderAll(); }
+  $('#go').onclick = async () => {
+    const j = await enter($('#pw').value);
+    if (!j.ok || j.role !== 'teacher') { $('#msg').textContent = j.ok ? '该密钥不是教师口令' : (j.msg || '验证失败'); return; }
+    sessionStorage.setItem('role', 'teacher');
+    $('#login').style.display = 'none'; $('#dash').style.display = 'block';
+    renderAll();
   };
+  $('#pw').onkeydown = e => { if (e.key === 'Enter') $('#go').click(); };
+  $('#reportBtn').onclick = buildReport;
+  $('#copyBtn').onclick = async () => { await navigator.clipboard.writeText(await reportText()); alert('成绩单已复制'); };
+  $('#printBtn').onclick = () => { buildReport().then(() => { document.body.classList.add('printing'); setTimeout(() => { window.print(); document.body.classList.remove('printing'); }, 100); }); };
+  $('#csvBtn').onclick = exportReportCsv;
 }
 init();
 </script>
