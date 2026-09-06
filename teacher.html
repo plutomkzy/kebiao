@@ -141,6 +141,7 @@ function renderForm() {
         p_comment: $('#cm').value, p_password: $('#pw').value,
       });
       $('#tmsg').textContent = j.ok ? '教师评分已提交：' + cfg.name + ' 第' + cur + '大组·第' + sub + '小组' : (j.msg || j.message || '提交失败');
+      if (j.ok) showToast('教师评分已提交');
     };
   } else {
     // 4班：两张表
@@ -180,6 +181,7 @@ function renderForm() {
         p_comment: '', p_password: $('#pw').value,
       });
       $('#tmsg').textContent = j.ok ? '讲课评分已提交：' + cfg.name + ' 第' + cur + '大组·第' + sub + '小组' : (j.msg || j.message || '提交失败');
+      if (j.ok) showToast('讲课评分已提交');
     };
     $('#subDes').onclick = async () => {
       if (desScores.some(s => !s) || desScores.some(s => s < 0)) { $('#tmsg').textContent = '请完成教学设计表全部 4 项'; return; }
@@ -189,6 +191,7 @@ function renderForm() {
         p_comment: $('#cm2').value, p_password: $('#pw').value,
       });
       $('#tmsg').textContent = j.ok ? '教学设计评分已提交：' + cfg.name + ' 第' + cur + '大组·第' + sub + '小组' : (j.msg || j.message || '提交失败');
+      if (j.ok) showToast('教学设计评分已提交');
     };
   }
 }

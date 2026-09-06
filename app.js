@@ -103,3 +103,17 @@ function fmtTime(ts) {
   const d = new Date(ts);
   return d.toLocaleDateString('zh-CN') + ' ' + d.toLocaleTimeString('zh-CN', { hour12: false });
 }
+
+/* 提交成功提示 */
+function showToast(msg) {
+  const old = document.querySelector('.toast');
+  if (old) old.remove();
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.innerHTML = '<div class="toast-card"><div class="tick">✓</div><div class="tt">' + esc(msg) + '</div></div>';
+  document.body.appendChild(t);
+  setTimeout(() => {
+    t.classList.add('hide');
+    setTimeout(() => t.remove(), 400);
+  }, 1400);
+}

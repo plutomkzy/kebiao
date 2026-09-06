@@ -143,6 +143,7 @@ async function init() {
       p_name: $('#name').value, p_comment: $('#comment').value,
     });
     $('#msg').textContent = j.ok ? '评分已提交' : (j.msg || j.message || '提交失败，请检查网络');
+    if (j.ok) showToast('评分已提交');
     if (j.ok) {
       voted[key()] = { scores: scores.slice(), anonymous: $('#anon').checked, name: $('#name').value, comment: $('#comment').value };
       localStorage.setItem('voted', JSON.stringify(voted));
