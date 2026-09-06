@@ -222,8 +222,8 @@ function exportCsv() {
 async function init() {
   if (sessionStorage.getItem('role') === 'admin') { $('#login').style.display = 'none'; $('#dash').style.display = 'block'; refresh(); setInterval(refresh, 5000); }
   $('#go').onclick = async () => {
-    const j = await enter($('#pw').value);
-    if (!j.ok || j.role !== 'admin') { $('#msg').textContent = j.ok ? '该密钥不是管理员口令' : (j.msg || '验证失败'); return; }
+    const j = await rpc('verify_admin', { p_password: $('#pw').value });
+    if (!j.ok) { $('#msg').textContent = j.msg || '验证失败'; return; }
     sessionStorage.setItem('role', 'admin');
     $('#login').style.display = 'none'; $('#dash').style.display = 'block';
     refresh(); setInterval(refresh, 5000);
