@@ -21,6 +21,17 @@
     <div class="groups" id="groups"></div>
     <div class="groups" id="subgroups"></div>
 
+    <details class="keys">
+      <summary>修改我的口令</summary>
+      <div class="fblock">
+        <input type="password" id="sold" placeholder="原口令">
+        <input type="password" id="snew1" placeholder="新口令（4-50位）">
+        <input type="password" id="snew2" placeholder="确认新口令">
+        <button class="btn small" id="schpw" style="margin-top:8px">更新口令</button>
+        <div id="spwmsg" style="text-align:center;color:var(--red);min-height:22px"></div>
+      </div>
+    </details>
+
     <div id="items"></div>
 
     <div class="row">
@@ -41,7 +52,7 @@
 <script>
 const $ = s => document.querySelector(s);
 const CLS = sessionStorage.getItem('cls');
-if (!CLS || !sessionStorage.getItem('code') || sessionStorage.getItem('role') !== 'student') location.href = 'student.html';
+if (!CLS || !sessionStorage.getItem('code') || !sessionStorage.getItem('spwd') || sessionStorage.getItem('role') !== 'student') location.href = 'student.html';
 const CFG = cfgOf(CLS);
 let cid = null, cur = 1, sub = 1, scores = [];
 const voted = JSON.parse(localStorage.getItem('voted') || '{}');
@@ -144,6 +155,14 @@ async function init() {
   renderGroups(); renderItems(); loadVoted();
   $('#bind').textContent = '绑定：' + (sessionStorage.getItem('sname') || '') + '（' + sessionStorage.getItem('code') + '）';
   $('#anon').onchange = toggleName;
+  $('#schpw').onclick = async () => {
+    const o = $('#sold').value, n1 = $('#snew1').value, n2 = $('#snew2').value;
+    if (!o || !n1) { $('#spwmsg').textContent = '请填写完整'; return; }
+    if (n1 !== n2) { $('#spwmsg').textContent = '两次输入的新口令不一致'; return; }
+    const j = await rpc('change_student_password', { p_cls: CLS, p_code: sessionStorage.getItem('code'), p_old: o, p_new: n1 });
+    $('#spwmsg').textContent = j.ok ? '' : (j.msg || '更新失败');
+    if (j.ok) { sessionStorage.setItem('spwd', n1); $('#sold').value = $('#snew1').value = $('#snew2').value = ''; showToast('个人口令已更新'); }
+  };
   $('#submit').onclick = async () => {
     if (STD) {
       if (scores.some(s => !s)) { $('#msg').textContent = '尚有项目未评分，请完成全部'; return; }
@@ -155,7 +174,7 @@ async function init() {
       p_client_id: cid, p_role: 'student', p_cls: CLS, p_grp: cur, p_subgrp: sub,
       p_scores: scores, p_form: '', p_anonymous: $('#anon').checked,
       p_name: $('#name').value, p_comment: $('#comment').value,
-      p_code: sessionStorage.getItem('code'),
+      p_code: sessionStorage.getItem('code'), p_pwd: sessionStorage.getItem('spwd'),
     });
     $('#submit').disabled = false;
     $('#msg').textContent = j.ok ? '评分已提交' : (j.msg || j.message || '提交失败，请检查网络');

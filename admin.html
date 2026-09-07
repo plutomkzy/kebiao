@@ -60,6 +60,17 @@
             <button class="btn small" id="btnC">更新</button>
           </div>
         </div>
+        <div class="fblock">
+          <h3>重置学生个人口令</h3>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <select id="selCls2" style="padding:10px;border:2px solid var(--line);border-radius:10px;background:rgba(255,250,235,.8);font-family:inherit;font-size:16px">
+              <option value="3">3班</option><option value="4">4班</option><option value="5">5班</option>
+            </select>
+            <input type="text" id="rcode" placeholder="学生学号" style="flex:1;min-width:140px">
+            <input type="password" id="rpw" placeholder="管理员口令" style="flex:1;min-width:140px">
+            <button class="btn small" id="btnR">重置为学号</button>
+          </div>
+        </div>
       </details>
 
       <div style="text-align:center">
@@ -275,6 +286,11 @@ async function init() {
   $('#btnC').onclick = async () => {
     const j = await rpc('admin_set_student_code', { p_admin_password: $('#cpw').value, p_cls: $('#selCls').value, p_new: $('#cnew').value });
     if (j.ok) { $('#cpw').value = $('#cnew').value = ''; showToast('班级码已更新'); }
+    else alert(j.msg || '更新失败');
+  };
+  $('#btnR').onclick = async () => {
+    const j = await rpc('admin_reset_student_pwd', { p_admin_password: $('#rpw').value, p_cls: $('#selCls2').value, p_code: $('#rcode').value.trim() });
+    if (j.ok) { $('#rpw').value = $('#rcode').value = ''; showToast('学生口令已重置为学号'); }
     else alert(j.msg || '更新失败');
   };
   $('#reportBtn').onclick = buildReport;

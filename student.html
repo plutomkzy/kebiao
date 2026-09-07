@@ -28,9 +28,10 @@
       <div class="head">
         <span class="seal">生</span>
         <h1 id="t2">学生入口</h1>
-        <div class="sub">第二步：输入你的学号（一人一号，同组可改票）</div>
+        <div class="sub">第二步：输入学号和个人口令（首次使用：口令=学号）</div>
       </div>
-      <input type="password" id="code" placeholder="学号" style="text-align:center;letter-spacing:4px">
+      <input type="text" id="code" placeholder="学号" style="text-align:center;letter-spacing:4px">
+      <input type="password" id="spwd" placeholder="个人口令" style="text-align:center;letter-spacing:4px;margin-top:8px">
       <button class="btn primary" id="go2" style="margin-top:12px">进入评分</button>
       <div id="msg2"></div>
     </div>
@@ -55,11 +56,14 @@ async function init() {
   $('#pw').onkeydown = e => { if (e.key === 'Enter') $('#go1').click(); };
   $('#go2').onclick = async () => {
     const code = $('#code').value.trim();
+    const spwd = $('#spwd').value;
     if (!code) { $('#msg2').textContent = '请输入学号'; return; }
-    const j = await rpc('verify_code', { p_cls: sessionStorage.getItem('cls'), p_code: code });
+    if (!spwd) { $('#msg2').textContent = '请输入个人口令'; return; }
+    const j = await rpc('verify_student', { p_cls: sessionStorage.getItem('cls'), p_code: code, p_pwd: spwd });
     if (!j.ok) { $('#msg2').textContent = j.msg || '验证失败'; return; }
     sessionStorage.setItem('role', 'student');
     sessionStorage.setItem('code', code);
+    sessionStorage.setItem('spwd', spwd);
     sessionStorage.setItem('sname', j.name || '');
     location.href = 'vote.html';
   };
