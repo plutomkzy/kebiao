@@ -15,6 +15,7 @@
       <span class="seal">生</span>
       <h1 id="title">小组讲解评分</h1>
       <div class="sub" id="sub"></div>
+      <div class="note" id="bind"></div>
     </div>
 
     <div class="groups" id="groups"></div>
@@ -40,7 +41,7 @@
 <script>
 const $ = s => document.querySelector(s);
 const CLS = sessionStorage.getItem('cls');
-if (!CLS || sessionStorage.getItem('role') !== 'student') location.href = 'student.html';
+if (!CLS || !sessionStorage.getItem('code') || sessionStorage.getItem('role') !== 'student') location.href = 'student.html';
 const CFG = cfgOf(CLS);
 let cid = null, cur = 1, sub = 1, scores = [];
 const voted = JSON.parse(localStorage.getItem('voted') || '{}');
@@ -141,6 +142,7 @@ async function init() {
     localStorage.setItem('cid', cid);
   }
   renderGroups(); renderItems(); loadVoted();
+  $('#bind').textContent = '绑定：' + (sessionStorage.getItem('sname') || '') + '（' + sessionStorage.getItem('code') + '）';
   $('#anon').onchange = toggleName;
   $('#submit').onclick = async () => {
     if (STD) {
@@ -153,6 +155,7 @@ async function init() {
       p_client_id: cid, p_role: 'student', p_cls: CLS, p_grp: cur, p_subgrp: sub,
       p_scores: scores, p_form: '', p_anonymous: $('#anon').checked,
       p_name: $('#name').value, p_comment: $('#comment').value,
+      p_code: sessionStorage.getItem('code'),
     });
     $('#submit').disabled = false;
     $('#msg').textContent = j.ok ? '评分已提交' : (j.msg || j.message || '提交失败，请检查网络');

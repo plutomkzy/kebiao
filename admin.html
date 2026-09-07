@@ -183,7 +183,7 @@ function expandDetail(tr, r) {
     d.className = 'dvote' + (v.role === 'teacher' ? ' teacher' : '');
     d.innerHTML =
       '<span class="t">' + fmtTime(v.ts) + '</span>' +
-      roleLabel(v) + (v.anonymous ? '匿名' : (v.name || '匿名')) +
+      roleLabel(v) + (v.anonymous ? '匿名' : (esc(v.name) || '匿名')) +
       '<span class="sc">' + v.scores.join(' ') + '</span>' +
       (v.comment ? '<br><span class="cm">评语：' + esc(v.comment) + '</span>' : '');
     tr.after(d);
@@ -227,6 +227,10 @@ function reportText() {
   lines.push('', '统计时间：' + fmtTime(new Date().toISOString()));
   return lines.join('\n');
 }
+function csvSafe(s) {
+  s = String(s == null ? '' : s);
+  return /^[=+\-@]/.test(s) ? "'" + s : s;
+}
 function exportCsv() {
   const cfg = cfgOf(CLS);
   const maxItems = Math.max(...allVotes.map(v => v.scores.length), 1);
@@ -236,8 +240,8 @@ function exportCsv() {
     lines.push([
       CLS, v.grp, v.subgrp || 1,
       v.role === 'student' ? '学生' : (v.form === 'lecture' ? '教师·讲课' : v.form === 'design' ? '教师·设计' : '教师'),
-      v.form || '', v.anonymous ? '是' : '否', v.anonymous ? '' : (v.name || ''),
-      (v.comment || '').replace(/,/g, '，').replace(/\n/g, ' '),
+      v.form || '', v.anonymous ? '是' : '否', v.anonymous ? '' : csvSafe(v.name || ''),
+      csvSafe((v.comment || '').replace(/,/g, '，').replace(/\n/g, ' ')),
       ...v.scores, v.scores.reduce((a, b) => a + b, 0),
     ].join(','));
   });
