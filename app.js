@@ -76,7 +76,7 @@ function calcStats(votes, cls) {
   const rows = unitList(cls).map(u => {
     const d = map[uid(cls, u.g, u.s)];
     if (cfg.mode === 'standard') {
-      d.student_pct = d.sv ? round1(d.ssSum / d.sv * 2) : null;
+      d.student_pct = d.sv ? round1(d.ssSum / d.sv * 20) : null;
       d.teacher_pct = d.tv ? round1(d.tsSum / d.tv * 2) : null;
       d.final = (d.student_pct != null && d.teacher_pct != null)
         ? round1(d.student_pct * cfg.studentWeight + d.teacher_pct * cfg.teacherWeight) : null;
