@@ -159,7 +159,7 @@ async function init() {
     const o = $('#sold').value, n1 = $('#snew1').value, n2 = $('#snew2').value;
     if (!o || !n1) { $('#spwmsg').textContent = '请填写完整'; return; }
     if (n1 !== n2) { $('#spwmsg').textContent = '两次输入的新口令不一致'; return; }
-    const j = await rpc('change_student_password', { p_cls: CLS, p_code: sessionStorage.getItem('code'), p_old: o, p_new: n1 });
+    const j = await rpc('change_student_password', { p_cls: CLS, p_old: o, p_new: n1 });
     $('#spwmsg').textContent = j.ok ? '' : (j.msg || '更新失败');
     if (j.ok) { sessionStorage.setItem('spwd', n1); $('#sold').value = $('#snew1').value = $('#snew2').value = ''; showToast('个人口令已更新'); }
   };
