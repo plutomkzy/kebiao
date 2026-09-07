@@ -35,6 +35,17 @@
       <div class="groups" id="groups"></div>
       <div class="groups" id="subgroups"></div>
 
+      <details class="keys">
+        <summary>修改教师口令</summary>
+        <div class="fblock">
+          <input type="password" id="oldpw" placeholder="原口令">
+          <input type="password" id="newpw1" placeholder="新口令">
+          <input type="password" id="newpw2" placeholder="确认新口令">
+          <button class="btn small" id="chpw" style="margin-top:8px">更新口令</button>
+          <div id="pwmsg" style="text-align:center;color:var(--red);min-height:22px"></div>
+        </div>
+      </details>
+
       <div id="formArea"></div>
 
       <div id="tmsg"></div>
@@ -151,7 +162,11 @@ function renderForm() {
     let html = '<div class="fblock"><h3>主讲人讲课教师评分表</h3>';
     cfg.lectureItems.forEach((it, i) => {
       html += '<div class="formrow"><span class="fname"><span class="no">' + (i + 1) + '</span>' + it[0] + '（' + it[1] + '分）</span>' +
-        '<input type="number" class="num" min="0" max="' + it[1] + '" placeholder="0-' + it[1] + '" data-idx="' + i + '" data-kind="lec"></div>';
+        '<div class="slider-row">' +
+        '<button class="stepbtn minus" data-kind="lec" data-idx="' + i + '">−</button>' +
+        '<input type="range" class="slider" min="0" max="' + it[1] + '" step="1" value="0" data-kind="lec" data-idx="' + i + '">' +
+        '<button class="stepbtn plus" data-kind="lec" data-idx="' + i + '">＋</button>' +
+        '<span class="sval" id="sv-lec-' + i + '">0</span><span class="smax">/' + it[1] + '</span></div></div>';
     });
     html += '<div class="ftotal">讲课合计：<b id="lecTotal">0</b> / 100</div>';
     html += '<button class="btn primary" id="subLec" style="margin-top:12px">提交讲课评分</button></div>';
@@ -159,37 +174,51 @@ function renderForm() {
     html += '<div class="fblock"><h3>教学设计（教案+PPT）教师评分表</h3>';
     cfg.designItems.forEach((it, i) => {
       html += '<div class="formrow"><span class="fname"><span class="no">' + (i + 1) + '</span>' + it[0] + '（' + it[1] + '分）</span>' +
-        '<input type="number" class="num" min="0" max="' + it[1] + '" placeholder="0-' + it[1] + '" data-idx="' + i + '" data-kind="des"></div>';
+        '<div class="slider-row">' +
+        '<button class="stepbtn minus" data-kind="des" data-idx="' + i + '">−</button>' +
+        '<input type="range" class="slider" min="0" max="' + it[1] + '" step="1" value="0" data-kind="des" data-idx="' + i + '">' +
+        '<button class="stepbtn plus" data-kind="des" data-idx="' + i + '">＋</button>' +
+        '<span class="sval" id="sv-des-' + i + '">0</span><span class="smax">/' + it[1] + '</span></div></div>';
     });
     html += '<div class="ftotal">设计合计：<b id="desTotal">0</b> / 100</div>';
     html += '<textarea id="cm2" placeholder="评语"></textarea>';
     html += '<button class="btn primary" id="subDes" style="margin-top:12px">提交教学设计评分</button></div>';
     box.innerHTML = html;
 
-    box.querySelectorAll('.num').forEach(inp => {
-      inp.oninput = () => {
-        const v = parseInt(inp.value || '0', 10);
-        if (inp.dataset.kind === 'lec') { lecScores[+inp.dataset.idx] = v; $('#lecTotal').textContent = lecScores.reduce((a, b) => a + b, 0); }
-        else { desScores[+inp.dataset.idx] = v; $('#desTotal').textContent = desScores.reduce((a, b) => a + b, 0); }
-      };
+    const updTotals = () => {
+      $('#lecTotal').textContent = lecScores.reduce((a, b) => a + b, 0);
+      $('#desTotal').textContent = desScores.reduce((a, b) => a + b, 0);
+    };
+    box.querySelectorAll('.slider').forEach(sl => {
+      const kind = sl.dataset.kind, idx = +sl.dataset.idx;
+      const arr = kind === 'lec' ? lecScores : desScores;
+      const max = +sl.max;
+      const paint = () => { $('#sv-' + kind + '-' + idx).textContent = arr[idx]; sl.value = arr[idx]; };
+      sl.oninput = () => { arr[idx] = Math.min(max, Math.max(0, parseInt(sl.value, 10) || 0)); paint(); updTotals(); };
+      sl.parentElement.querySelector('.minus').onclick = () => { arr[idx] = Math.max(0, arr[idx] - 1); paint(); updTotals(); };
+      sl.parentElement.querySelector('.plus').onclick = () => { arr[idx] = Math.min(max, arr[idx] + 1); paint(); updTotals(); };
     });
     $('#subLec').onclick = async () => {
       if (lecScores.some(s => !s) || lecScores.some(s => s < 0)) { $('#tmsg').textContent = '请完成讲课表全部 4 项'; return; }
+      $('#subLec').disabled = true;
       const j = await rpc('submit_vote', {
         p_client_id: tcid, p_role: 'teacher', p_cls: CLS, p_grp: cur, p_subgrp: sub,
         p_scores: lecScores, p_form: 'lecture', p_anonymous: false, p_name: '',
         p_comment: '', p_password: $('#pw').value,
       });
+      $('#subLec').disabled = false;
       $('#tmsg').textContent = j.ok ? '讲课评分已提交：' + cfg.name + ' 第' + cur + '大组·第' + sub + '小组' : (j.msg || j.message || '提交失败');
       if (j.ok) showToast('讲课评分已提交');
     };
     $('#subDes').onclick = async () => {
       if (desScores.some(s => !s) || desScores.some(s => s < 0)) { $('#tmsg').textContent = '请完成教学设计表全部 4 项'; return; }
+      $('#subDes').disabled = true;
       const j = await rpc('submit_vote', {
         p_client_id: tcid, p_role: 'teacher', p_cls: CLS, p_grp: cur, p_subgrp: sub,
         p_scores: desScores, p_form: 'design', p_anonymous: false, p_name: '',
         p_comment: $('#cm2').value, p_password: $('#pw').value,
       });
+      $('#subDes').disabled = false;
       $('#tmsg').textContent = j.ok ? '教学设计评分已提交：' + cfg.name + ' 第' + cur + '大组·第' + sub + '小组' : (j.msg || j.message || '提交失败');
       if (j.ok) showToast('教学设计评分已提交');
     };
@@ -268,6 +297,14 @@ async function init() {
     renderAll();
   };
   $('#pw').onkeydown = e => { if (e.key === 'Enter') $('#go').click(); };
+  $('#chpw').onclick = async () => {
+    const o = $('#oldpw').value, n1 = $('#newpw1').value, n2 = $('#newpw2').value;
+    if (!o || !n1) { $('#pwmsg').textContent = '请填写完整'; return; }
+    if (n1 !== n2) { $('#pwmsg').textContent = '两次输入的新口令不一致'; return; }
+    const j = await rpc('change_teacher_password', { p_old: o, p_new: n1 });
+    $('#pwmsg').textContent = j.ok ? '' : (j.msg || '更新失败');
+    if (j.ok) { $('#pw').value = n1; $('#oldpw').value = $('#newpw1').value = $('#newpw2').value = ''; showToast('教师口令已更新'); }
+  };
   $('#reportBtn').onclick = buildReport;
   $('#copyBtn').onclick = async () => { await navigator.clipboard.writeText(await reportText()); alert('成绩单已复制'); };
   $('#printBtn').onclick = () => { buildReport().then(() => { document.body.classList.add('printing'); setTimeout(() => { window.print(); document.body.classList.remove('printing'); }, 100); }); };

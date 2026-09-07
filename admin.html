@@ -34,6 +34,34 @@
       <div class="groups" id="clstabs"></div>
       <div class="statchips" id="chips"></div>
 
+      <details class="keys">
+        <summary>密钥管理</summary>
+        <div class="fblock">
+          <h3>修改管理员口令</h3>
+          <input type="password" id="ao" placeholder="原口令">
+          <input type="password" id="an1" placeholder="新口令">
+          <input type="password" id="an2" placeholder="确认新口令">
+          <button class="btn small" id="btnA">更新</button>
+        </div>
+        <div class="fblock">
+          <h3>修改教师口令</h3>
+          <input type="password" id="apw" placeholder="管理员口令">
+          <input type="password" id="tn" placeholder="新教师口令">
+          <button class="btn small" id="btnT">更新</button>
+        </div>
+        <div class="fblock">
+          <h3>修改班级码</h3>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <select id="selCls" style="padding:10px;border:2px solid var(--line);border-radius:10px;background:rgba(255,250,235,.8);font-family:inherit;font-size:16px">
+              <option value="3">3班</option><option value="4">4班</option><option value="5">5班</option>
+            </select>
+            <input type="password" id="cpw" placeholder="管理员口令" style="flex:1;min-width:140px">
+            <input type="text" id="cnew" placeholder="新班级码" style="flex:1;min-width:140px">
+            <button class="btn small" id="btnC">更新</button>
+          </div>
+        </div>
+      </details>
+
       <div style="text-align:center">
         <button class="btn small primary" id="reportBtn">生成成绩单</button>
         <button class="btn small" id="copyBtn">复制成绩单</button>
@@ -229,6 +257,22 @@ async function init() {
     refresh(); setInterval(refresh, 5000);
   };
   $('#pw').onkeydown = e => { if (e.key === 'Enter') $('#go').click(); };
+  $('#btnA').onclick = async () => {
+    if ($('#an1').value !== $('#an2').value) { alert('两次输入的新口令不一致'); return; }
+    const j = await rpc('change_admin_password', { p_old: $('#ao').value, p_new: $('#an1').value });
+    if (j.ok) { $('#ao').value = $('#an1').value = $('#an2').value = ''; $('#pw').value = ''; showToast('管理员口令已更新'); }
+    else alert(j.msg || '更新失败');
+  };
+  $('#btnT').onclick = async () => {
+    const j = await rpc('admin_set_teacher_password', { p_admin_password: $('#apw').value, p_new: $('#tn').value });
+    if (j.ok) { $('#apw').value = $('#tn').value = ''; showToast('教师口令已更新'); }
+    else alert(j.msg || '更新失败');
+  };
+  $('#btnC').onclick = async () => {
+    const j = await rpc('admin_set_student_code', { p_admin_password: $('#cpw').value, p_cls: $('#selCls').value, p_new: $('#cnew').value });
+    if (j.ok) { $('#cpw').value = $('#cnew').value = ''; showToast('班级码已更新'); }
+    else alert(j.msg || '更新失败');
+  };
   $('#reportBtn').onclick = buildReport;
   $('#copyBtn').onclick = async () => { await navigator.clipboard.writeText(reportText()); alert('成绩单已复制'); };
   $('#printBtn').onclick = () => { buildReport().then(() => { document.body.classList.add('printing'); setTimeout(() => { window.print(); document.body.classList.remove('printing'); }, 100); }); };

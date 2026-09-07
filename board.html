@@ -11,6 +11,19 @@
 <body>
 <div class="wrap board">
   <div class="panel">
+    <!-- 大屏入口验证 -->
+    <div id="gate">
+      <div class="head">
+        <span class="seal">榜</span>
+        <h1>实时大屏</h1>
+        <div class="sub">输入班级码查看本班大屏（教师口令可切换班级）</div>
+      </div>
+      <input type="password" id="pw" placeholder="班级码 / 教师口令" style="text-align:center;letter-spacing:4px">
+      <button class="btn primary" id="go" style="margin-top:12px">进入大屏</button>
+      <div id="msg"></div>
+    </div>
+
+    <div id="dash" style="display:none">
     <div class="head">
       <span class="seal">榜</span>
       <h1 id="title">实时得分</h1>
@@ -26,6 +39,7 @@
     </div>
 
     <div class="extras" id="comments"></div>
+    </div>
   </div>
 </div>
 <script src="config.js"></script>
@@ -33,9 +47,12 @@
 <script>
 const $ = s => document.querySelector(s);
 let CLS = C.CLASS_IDS[0];
+let BOARD_ROLE = 'student';
 let allVotes = [], focusKey = null;
 
 function renderClsTabs() {
+  if (BOARD_ROLE === 'student') { $('#clstabs').style.display = 'none'; return; }
+  $('#clstabs').style.display = '';
   const box = $('#clstabs');
   box.innerHTML = '';
   C.CLASS_IDS.forEach(id => {
@@ -108,8 +125,26 @@ async function refresh() {
     cbox.appendChild(box);
   });
 }
-init = function () { refresh(); setInterval(refresh, 3000); };
-init();
+function start() { refresh(); setInterval(refresh, 3000); }
+function resume() {
+  BOARD_ROLE = sessionStorage.getItem('boardRole') || 'student';
+  CLS = sessionStorage.getItem('boardCls') || C.CLASS_IDS[0];
+  $('#gate').style.display = 'none';
+  $('#dash').style.display = 'block';
+  start();
+}
+$('#go').onclick = async () => {
+  const j = await enter($('#pw').value);
+  if (!j.ok) { $('#msg').textContent = j.msg || '验证失败'; return; }
+  if (j.role === 'student') { BOARD_ROLE = 'student'; CLS = j.cls; }
+  else { BOARD_ROLE = j.role; CLS = C.CLASS_IDS[0]; }
+  sessionStorage.setItem('boardRole', BOARD_ROLE);
+  sessionStorage.setItem('boardCls', CLS);
+  $('#gate').style.display = 'none';
+  $('#dash').style.display = 'block';
+  start();
+};
+if (sessionStorage.getItem('boardRole')) resume();
 </script>
 </body>
 </html>

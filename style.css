@@ -65,6 +65,7 @@ body {
 }
 .btn:hover { filter: brightness(1.04); transform: translateY(-1px); }
 .btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: .55; pointer-events: none; }
 .btn.primary {
   background: linear-gradient(180deg, #c9503f, #963127);
   border-color: #6e1f16; color: #fdf3d7;
@@ -248,6 +249,37 @@ input[type=number].num:focus { border-color: var(--red); box-shadow: 0 0 0 3px r
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
 @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+/* ---------- 滑块打分 ---------- */
+.slider-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+input[type=range].slider {
+  flex: 1; -webkit-appearance: none; appearance: none; height: 10px;
+  border-radius: 6px; outline: none; background: linear-gradient(90deg, #d8a13a, #b03a2e);
+}
+input[type=range].slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 30px; height: 30px; border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, #f6e3b4, #c39a4f 70%);
+  border: 2px solid #7a5a38; box-shadow: 0 2px 6px rgba(0, 0, 0, .35); cursor: pointer;
+}
+input[type=range].slider::-moz-range-thumb {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, #f6e3b4, #c39a4f 70%);
+  border: 2px solid #7a5a38; box-shadow: 0 2px 6px rgba(0, 0, 0, .35); cursor: pointer;
+}
+input[type=range].slider::-moz-range-track { height: 10px; border-radius: 6px; background: linear-gradient(90deg, #d8a13a, #b03a2e); }
+.stepbtn {
+  width: 38px; height: 38px; flex: none; border-radius: 50%; cursor: pointer;
+  border: 2px solid var(--line); background: linear-gradient(180deg, #fdf3d7, #ecd6a0);
+  font-size: 22px; line-height: 1; font-family: inherit; color: var(--ink);
+  transition: transform .1s;
+}
+.stepbtn:active { transform: scale(.9); }
+.sval { min-width: 58px; text-align: center; font-size: 23px; font-weight: 700; color: var(--red); }
+.smax { font-size: 14px; color: var(--ink-soft); }
+details.keys { margin: 16px 0; border: 2px solid var(--line); border-radius: 12px; background: rgba(255, 250, 235, .5); padding: 12px 14px; }
+details.keys summary { cursor: pointer; font-size: 18px; font-weight: 700; letter-spacing: 2px; }
+details.keys .fblock { margin: 12px 0; }
+details.keys input { margin: 4px 0; }
 
 /* ---------- 手机适配 ---------- */
 @media (max-width: 700px) {
