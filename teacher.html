@@ -70,7 +70,7 @@
 const $ = s => document.querySelector(s);
 let CLS = C.CLASS_IDS[0];
 const tcid = localStorage.getItem('tcid') || (() => { const v = (crypto.randomUUID && crypto.randomUUID()) || Math.random().toString(36).slice(2); localStorage.setItem('tcid', v); return v; })();
-let cur = 1, sub = 1, starScores = [], lecScores = [], desScores = [];
+let cur = 1, sub = 1, starScores = [], lecScores = [], desScores = [], tierVals = [null, null];
 
 function curCfg() { return cfgOf(CLS); }
 
@@ -118,11 +118,52 @@ function resetForms() {
 function paintStars(el, val) {
   el.querySelectorAll('span').forEach((s, i) => s.classList.toggle('on', i < val));
 }
+/* 两人档位：教师对 2 人小组的两位成员分别评档 */
+function tierBlockHTML(cfg) {
+  const opts = cfg.tierOptions || [];
+  if (!opts.length) return '';
+  const labels = cfg.personLabels || ['成员A', '成员B'];
+  let h = '<div class="fblock"><h3>个人档位（两位成员分别评定）</h3>';
+  labels.forEach((nm, i) => {
+    h += '<div class="formrow"><span class="fname">' + nm + '</span><span class="tierpick" data-i="' + i + '">';
+    opts.forEach(o => {
+      h += '<button class="tierbtn" data-i="' + i + '" data-v="' + o[1] + '">' + o[0] +
+        '<small>' + o[1] + '</small></button>';
+    });
+    h += '</span></div>';
+  });
+  h += '<div class="ftotal" id="tierTip">未选档位时，两位成员按小组同分</div></div>';
+  return h;
+}
+function wireTiers(cfg) {
+  tierVals = [null, null];
+  document.querySelectorAll('#formArea .tierbtn').forEach(b => {
+    b.onclick = () => {
+      const i = +b.dataset.i;
+      tierVals[i] = +b.dataset.v;
+      document.querySelectorAll('#formArea .tierbtn[data-i="' + i + '"]').forEach(x => x.classList.toggle('on', x === b));
+      updateTierTip(cfg);
+    };
+  });
+}
+function updateTierTip(cfg) {
+  const tip = $('#tierTip');
+  if (!tip) return;
+  if (!tierVals[0] || !tierVals[1]) {
+    tip.textContent = '未选档位时，两位成员按小组同分';
+    return;
+  }
+  const diff = Math.abs(tierVals[0] - tierVals[1]);
+  const half = ((cfg.tiltK || 0) * diff / 2).toFixed(1);
+  const buf = cfg.floorBuffer || 0;
+  tip.innerHTML = '档位差 <b>' + diff + '</b> → 两人相对小组均分 <b>±' + half +
+    '</b> 分；保底：成员A ≥ <b>' + (tierVals[0] - buf) + '</b>，成员B ≥ <b>' + (tierVals[1] - buf) + '</b>';
+}
 function renderForm() {
   const cfg = curCfg();
   $('#title').textContent = cfg.name + ' · 教师评分';
   $('#sub').textContent = cfg.mode === 'standard'
-    ? '教师评分按 30% 计入小组最终成绩（学生部分占 70%）'
+    ? '十项五星评整组；最下方为两位成员的个人档位，用于个人分倾斜与保底（学生占 70%，教师占 30%）'
     : '每对搭档：讲课评分表 + 教学设计评分表分别提交；最终 =（师讲课×40% + 生平均×60%）×60% + 教学设计×40%';
   const box = $('#formArea');
   if (cfg.mode === 'standard') {
@@ -143,15 +184,23 @@ function renderForm() {
     });
     box.insertAdjacentHTML('beforeend',
       '<textarea id="cm" placeholder="评语（选填）"></textarea>' +
+      tierBlockHTML(cfg) +
       '<button class="btn primary" id="subStd" style="margin-top:16px">提交教师评分</button>');
+    wireTiers(cfg);
     $('#subStd').onclick = async () => {
       if (starScores.some(s => !s)) { $('#tmsg').textContent = '尚有项目未评分，请完成全部'; return; }
+      const tiers = (tierVals[0] && tierVals[1]) ? tierVals.slice() : null;
+      $('#subStd').disabled = true;
       const j = await rpc('submit_vote', {
         p_client_id: tcid, p_role: 'teacher', p_cls: CLS, p_grp: cur, p_subgrp: sub,
         p_scores: starScores, p_form: '', p_anonymous: false, p_name: '',
         p_comment: $('#cm').value, p_password: $('#pw').value,
+        p_tiers: tiers,
       });
-      $('#tmsg').textContent = j.ok ? '教师评分已提交：' + cfg.name + ' 第' + cur + '大组·第' + sub + '小组' : (j.msg || j.message || '提交失败');
+      $('#subStd').disabled = false;
+      $('#tmsg').textContent = j.ok
+        ? '教师评分已提交：' + cfg.name + ' 第' + cur + '大组·第' + sub + '小组' + (tiers ? '（含个人档位）' : '（未选档位，两人同分）')
+        : (j.msg || j.message || '提交失败');
       if (j.ok) showToast('教师评分已提交');
     };
   } else {

@@ -147,7 +147,10 @@ async function refresh() {
     if (std) {
       cells = '<td>' + (r.student_pct != null ? r.student_pct : '—') + pctbar + '</td>' +
         '<td>' + (r.teacher_pct != null ? r.teacher_pct + '（' + r.tv + '票）' : '待评') + '</td>' +
-        '<td>' + (r.final != null ? '<b>' + r.final + '</b>' : '待教师打分') + '</td>';
+        '<td>' + (r.final != null ? '<b>' + r.final + '</b>' : '待教师打分') +
+        ((r.pA_fin != null && r.pB_fin != null)
+          ? '<div style="font-size:12.5px;color:#5c451f">A ' + r.pA_fin + ' · B ' + r.pB_fin +
+            (r.tA && r.tB ? '（' + tierName(r.tA) + '/' + tierName(r.tB) + '）' : '') + '</div>' : '') + '</td>';
     } else {
       cells = '<td>' + (r.student_pct != null ? r.student_pct : '—') + pctbar + '</td>' +
         '<td>' + (r.tL != null ? r.tL : '待评') + '</td>' +
@@ -170,6 +173,21 @@ async function refresh() {
 function roleLabel(v) {
   if (v.role === 'student') return '生·';
   return v.form === 'lecture' ? '师·讲课' : v.form === 'design' ? '师·设计' : '师·';
+}
+function tierName(v) {
+  const map = { 90: '优秀', 80: '较好', 70: '一般', 60: '欠缺' };
+  return map[v] || String(v);
+}
+function personStr(r) {
+  if (r.pA_fin == null || r.pB_fin == null) return '';
+  return '<br><span style="color:#5c451f">· 成员A <b>' + r.pA_fin + '</b>（档位 ' +
+    (r.tA ? tierName(r.tA) : '未评') + '） · 成员B <b>' + r.pB_fin + '</b>（档位 ' +
+    (r.tB ? tierName(r.tB) : '未评') + '）</span>';
+}
+function personStrText(r) {
+  if (r.pA_fin == null || r.pB_fin == null) return '';
+  return ' ｜ 成员A ' + r.pA_fin + '（' + (r.tA ? tierName(r.tA) : '未评') + '） · 成员B ' +
+    r.pB_fin + '（' + (r.tB ? tierName(r.tB) : '未评') + '）';
 }
 function toggleDetail(tr, r) {
   const key = uid(CLS, r.g, r.s);
@@ -215,7 +233,7 @@ async function buildReport() {
     }
     n++;
     doneLines.push('<div class="rline">' + (cfg.mode === 'standard'
-      ? '第' + r.g + '大组·第' + r.s + '小组 —— 学生均分 <b>' + r.student_pct + '</b> · 教师分 <b>' + r.teacher_pct + '</b> · 加权总分 <b>' + r.final + '</b>（第' + n + '名）'
+      ? '第' + r.g + '大组·第' + r.s + '小组 —— 学生均分 <b>' + r.student_pct + '</b> · 教师分 <b>' + r.teacher_pct + '</b> · 组均分 <b>' + r.final + '</b>（第' + n + '名）' + personStr(r)
       : '第' + r.g + '大组·第' + r.s + '小组 —— 学生均分 <b>' + r.student_pct + '</b> · 教师讲课 <b>' + r.tL + '</b> · 教学设计 <b>' + r.tD + '</b> · 最终得分 <b>' + r.final + '</b>（第' + n + '名）') + '</div>');
   });
   $('#reportBody').innerHTML = doneLines.join('') + undLines.join('');
@@ -232,7 +250,7 @@ function reportText() {
     if (r.final == null) return;
     n++;
     lines.push(cfg.mode === 'standard'
-      ? '第' + r.g + '大组·第' + r.s + '小组 —— 学生均分 ' + r.student_pct + ' · 教师分 ' + r.teacher_pct + ' · 加权总分 ' + r.final + '（第' + n + '名）'
+      ? '第' + r.g + '大组·第' + r.s + '小组 —— 学生均分 ' + r.student_pct + ' · 教师分 ' + r.teacher_pct + ' · 组均分 ' + r.final + '（第' + n + '名）' + personStrText(r)
       : '第' + r.g + '大组·第' + r.s + '小组 —— 学生均分 ' + r.student_pct + ' · 教师讲课 ' + r.tL + ' · 教学设计 ' + r.tD + ' · 最终得分 ' + r.final + '（第' + n + '名）');
   });
   lines.push('', '统计时间：' + fmtTime(new Date().toISOString()));
@@ -245,13 +263,16 @@ function csvSafe(s) {
 function exportCsv() {
   const cfg = cfgOf(CLS);
   const maxItems = Math.max(...allVotes.map(v => v.scores.length), 1);
-  const lines = ['班级,大组,小组,角色,表单,匿名,姓名,评语,'
+  const lines = ['班级,大组,小组,角色,表单,档位,匿名,姓名,评语,'
     + Array.from({ length: maxItems }, (_, i) => '第' + (i + 1) + '项').join(',') + ',合计'];
   allVotes.filter(v => v.cls === CLS).forEach(v => {
     lines.push([
       CLS, v.grp, v.subgrp || 1,
       v.role === 'student' ? '学生' : (v.form === 'lecture' ? '教师·讲课' : v.form === 'design' ? '教师·设计' : '教师'),
-      v.form || '', v.anonymous ? '是' : '否', v.anonymous ? '' : csvSafe(v.name || ''),
+      v.form || '',
+      (Array.isArray(v.tiers) && v.tiers.length === 2)
+        ? tierName(v.tiers[0]) + '/' + tierName(v.tiers[1]) : '',
+      v.anonymous ? '是' : '否', v.anonymous ? '' : csvSafe(v.name || ''),
       csvSafe((v.comment || '').replace(/,/g, '，').replace(/\n/g, ' ')),
       ...v.scores, v.scores.reduce((a, b) => a + b, 0),
     ].join(','));

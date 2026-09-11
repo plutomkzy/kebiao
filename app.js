@@ -78,8 +78,25 @@ function calcStats(votes, cls) {
     if (cfg.mode === 'standard') {
       d.student_pct = d.sv ? round1(d.ssSum / d.sv * 20) : null;
       d.teacher_pct = d.tv ? round1(d.tsSum / d.tv * 2) : null;
-      d.final = (d.student_pct != null && d.teacher_pct != null)
-        ? round1(d.student_pct * cfg.studentWeight + d.teacher_pct * cfg.teacherWeight) : null;
+      // 教师票可携带两位成员的档位 [成员A, 成员B]
+      const tv = d.votes.filter(v => v.role === 'teacher' && cfg.tierOptions
+        && Array.isArray(v.tiers) && v.tiers.length === 2).pop();
+      d.tA = tv ? +tv.tiers[0] : null;
+      d.tB = tv ? +tv.tiers[1] : null;
+      if (d.student_pct != null) {
+        const k = cfg.tiltK || 0, buf = cfg.floorBuffer || 0;
+        const half = (d.tA != null && d.tB != null) ? k * (d.tA - d.tB) / 2 : 0;
+        let a = d.student_pct + half, b = d.student_pct - half;
+        if (d.tA != null) a = Math.max(a, d.tA - buf);
+        if (d.tB != null) b = Math.max(b, d.tB - buf);
+        d.pA_stu = round1(a);
+        d.pB_stu = round1(b);
+        if (d.teacher_pct != null) {
+          d.pA_fin = round1(a * cfg.studentWeight + d.teacher_pct * cfg.teacherWeight);
+          d.pB_fin = round1(b * cfg.studentWeight + d.teacher_pct * cfg.teacherWeight);
+          d.final = round1((d.pA_fin + d.pB_fin) / 2);
+        } else { d.pA_fin = null; d.pB_fin = null; d.final = null; }
+      } else { d.pA_fin = null; d.pB_fin = null; d.final = null; }
     } else {
       d.student_raw = d.sv ? round1(d.ssSum / d.sv) : null;
       d.student_pct = d.student_raw != null ? round1(Math.max(d.student_raw, cfg.studentFloor)) : null;

@@ -20,6 +20,11 @@ window.APP_CONFIG = {
       mode: 'standard',
       studentWeight: 0.7,
       teacherWeight: 0.3,
+      // 个人档位：教师对 2 人小组的两位成员分别评档，个人分按档位差倾斜并设保底
+      tierOptions: [['优秀', 90], ['较好', 80], ['一般', 70], ['欠缺', 60]],
+      personLabels: ['成员A', '成员B'],
+      tiltK: 0.5,        // 倾斜强度：个人分 = 小组学生均分 ± 档位差 × k ÷ 2
+      floorBuffer: 5,    // 个人保底 = 档位水平线 − 5
       items: [
         ['内容准确', '对课标章节内容的解读准确，无知识性错误，概念表述规范'],
         ['重点突出', '抓住本章节核心概念与基本理念，主次分明'],
@@ -77,6 +82,11 @@ window.APP_CONFIG = {
       mode: 'standard',
       studentWeight: 0.7,
       teacherWeight: 0.3,
+      // 个人档位：教师对 2 人小组的两位成员分别评档，个人分按档位差倾斜并设保底
+      tierOptions: [['优秀', 90], ['较好', 80], ['一般', 70], ['欠缺', 60]],
+      personLabels: ['成员A', '成员B'],
+      tiltK: 0.5,
+      floorBuffer: 5,
       items: [
         ['内容准确', '对课标章节内容的解读准确，无知识性错误，概念表述规范'],
         ['重点突出', '抓住本章节核心概念与基本理念，主次分明'],

@@ -90,7 +90,9 @@ async function refresh() {
     if (std) {
       cells = '<td>' + (r.student_pct != null ? r.student_pct : '—') + pctbar + '</td>' +
         '<td>' + (r.teacher_pct != null ? r.teacher_pct : '待评') + '</td>' +
-        '<td>' + (r.final != null ? '<b>' + r.final + '</b>' : '待教师打分') + '</td>';
+        '<td>' + (r.final != null ? '<b>' + r.final + '</b>' : '待教师打分') +
+        ((r.pA_fin != null && r.pB_fin != null)
+          ? '<div style="font-size:12.5px;color:#5c451f">A ' + r.pA_fin + ' · B ' + r.pB_fin + '</div>' : '') + '</td>';
     } else {
       cells = '<td>' + (r.student_pct != null ? r.student_pct : '—') + pctbar + '</td>' +
         '<td>' + (r.tL != null ? r.tL : '待评') + '</td>' +

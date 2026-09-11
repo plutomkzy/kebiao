@@ -281,6 +281,24 @@ details.keys summary { cursor: pointer; font-size: 18px; font-weight: 700; lette
 details.keys .fblock { margin: 12px 0; }
 details.keys input { margin: 4px 0; }
 
+/* ---------- 个人档位选择 ---------- */
+.tierpick { display: flex; gap: 8px; flex-wrap: wrap; }
+.tierbtn {
+  min-width: 74px; padding: 9px 12px; border-radius: 11px; cursor: pointer; font-family: inherit;
+  font-size: 17px; line-height: 1.15; color: var(--ink);
+  border: 2px solid var(--line); background: linear-gradient(180deg, #fdf3d7, #f0dcae);
+  transition: transform .12s, background .2s, color .2s, box-shadow .2s;
+}
+.tierbtn small { display: block; font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+.tierbtn:active { transform: scale(.95); }
+.tierbtn.on {
+  background: linear-gradient(180deg, #c34a3b, #963127); border-color: var(--red-dark); color: #fdf3d7;
+  box-shadow: 0 4px 12px rgba(150, 49, 39, .35);
+}
+.tierbtn.on small { color: rgba(253, 243, 215, .88); }
+
+.mut { color: var(--ink-soft); }
+
 /* ---------- 手机适配 ---------- */
 @media (max-width: 700px) {
   .wrap { padding: 16px 10px 72px; }
