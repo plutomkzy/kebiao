@@ -71,6 +71,7 @@ input,select{max-width:100%}
 @keyframes blink{50%{opacity:.25}}
 /* ===== 队伍卡 ===== */
 .crest{width:60px;height:60px;flex:0 0 auto;border:3px solid var(--line);box-shadow:0 3px 0 var(--line);overflow:hidden;background:#0c0e1e}
+.crest svg{width:100%;height:100%;display:block}
 .team{display:flex;gap:10px;padding:11px;margin-bottom:10px;position:relative}
 .team.full{opacity:.55}
 .team.mine{box-shadow:0 4px 0 var(--line), 0 0 0 3px var(--gold)}
@@ -114,6 +115,7 @@ label{display:block;font-size:13px;color:var(--dim);margin:8px 0 4px}
       <div class="pname" id="myName">加载中…</div>
       <div class="tagline" id="myTags"></div>
     </div>
+    <button class="sm b-ghost" id="ntfBtn" title="开启提醒">🔔</button>
     <button class="sm b-ghost" id="refresh">刷新</button>
   </div>
 
@@ -166,33 +168,158 @@ function toSVG(cells, N, bg, px) {
     '" shape-rendering="crispEdges">' + out + '</svg>';
 }
 const PAL = ['#ff4d5e', '#3ddc84', '#3d9bff', '#ffb02e', '#b06bff', '#2fe6e6', '#ffd23f', '#ff8fb1'];
-function crest(name, px) {
-  px = px || 5;
-  const r = rngOf(hash('crest:' + name));
-  const N = 12, half = Math.ceil(N / 2);
-  const c1 = PAL[Math.floor(r() * PAL.length)], c2 = PAL[Math.floor(r() * PAL.length)];
-  const cells = [];
-  for (let y = 0; y < N; y++) for (let x = 0; x < half; x++) if (r() < .45) cells.push([x, y, r() < .5 ? c1 : c2]);
-  const all = cells.slice();
-  cells.forEach(c => { if (c[0] !== N - 1 - c[0]) all.push([N - 1 - c[0], c[1], c[2]]); });
-  return toSVG(all, N, '#0c0e1e', px);
+function mix(hex, to, k) {
+  const a = parseInt(hex.slice(1), 16), b = parseInt(to.slice(1), 16);
+  const ch = s => Math.round((((a >> s) & 255) * (1 - k)) + (((b >> s) & 255) * k));
+  return '#' + [16, 8, 0].map(s => ch(s).toString(16).padStart(2, '0')).join('');
 }
+const light = (c, k) => mix(c, '#ffffff', k);
+const dark = (c, k) => mix(c, '#05060f', k);
+
+/* 队伍纹章：16×16 像素徽章（外框 + 底纹 + 对称纹样） */
+const MOTIFS = [
+  [ // 宝石
+    '................',
+    '.......++.......',
+    '......####......',
+    '.....######.....',
+    '....########....',
+    '...####--####...',
+    '..####----####..',
+    '.####------####.',
+    '.####------####.',
+    '..####----####..',
+    '...####--####...',
+    '....########....',
+    '.....######.....',
+    '......####......',
+    '.......++.......',
+    '................'],
+  [ // 兽面
+    '................',
+    '..#..........#..',
+    '.###........###.',
+    '.####......####.',
+    '..############..',
+    '.##############.',
+    '.###..####..###.',
+    '.##############.',
+    '.####.####.####.',
+    '..####----####..',
+    '...##########...',
+    '....##....##....',
+    '.....######.....',
+    '......####......',
+    '.......++.......',
+    '................'],
+  [ // 星芒
+    '................',
+    '.......++.......',
+    '......####......',
+    '.....######.....',
+    '....########....',
+    '..############..',
+    '.####------####.',
+    '..####----####..',
+    '....########....',
+    '...##########...',
+    '..####....####..',
+    '.###........###.',
+    '.##..........##.',
+    '.#............#.',
+    '................',
+    '................'],
+  [ // 盾徽
+    '................',
+    '..++++++++++++..',
+    '..############..',
+    '..##........##..',
+    '..##...##...##..',
+    '..##..####..##..',
+    '..##.######.##..',
+    '..##..####..##..',
+    '..##...##...##..',
+    '...##..##..##...',
+    '....##....##....',
+    '.....##..##.....',
+    '......####......',
+    '.......##.......',
+    '................',
+    '................']
+];
+function crest(name, cell) {
+  cell = cell || 4;
+  const r = rngOf(hash('crest2:' + name));
+  const main = PAL[Math.floor(r() * PAL.length)];
+  const accent = PAL[Math.floor(r() * PAL.length)];
+  const motif = MOTIFS[Math.floor(r() * MOTIFS.length)];
+  const N = 16, bg = r() < .5 ? '#0b0d1c' : '#151a33';
+  let out = '<rect x="0" y="0" width="' + N + '" height="' + N + '" fill="' + bg + '"/>';
+  // 斜纹底
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++)
+    if ((x + y) % 4 === 0) out += '<rect x="' + x + '" y="' + y + '" width="1" height="1" fill="' + mix(bg, '#ffffff', .07) + '"/>';
+  // 纹样
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const c = motif[y][x];
+    if (c === '.') continue;
+    const col = c === '#' ? main : c === '+' ? light(main, .5) : c === '-' ? dark(main, .35) : accent;
+    out += '<rect x="' + x + '" y="' + y + '" width="1" height="1" fill="' + col + '"/>';
+  }
+  // 外框 + 内圈 + 四角
+  out += '<rect x="0" y="0" width="16" height="16" fill="none" stroke="#05060f" stroke-width="2"/>';
+  out += '<rect x="2" y="2" width="12" height="12" fill="none" stroke="' + dark(accent, .25) + '" stroke-width="1"/>';
+  [[0, 0], [0, 13], [13, 0], [13, 13]].forEach(c => {
+    out += '<rect x="' + c[0] + '" y="' + c[1] + '" width="3" height="3" fill="' + accent + '"/>';
+    out += '<rect x="' + (c[0] + 1) + '" y="' + (c[1] + 1) + '" width="1" height="1" fill="' + light(accent, .5) + '"/>';
+  });
+  const size = N * cell;
+  return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + N + ' ' + N +
+    '" shape-rendering="crispEdges">' + out + '</svg>';
+}
+
+/* 同学头像：12×12 像素小人（发型/眼睛/嘴/衣领/配饰 由学号决定） */
 function avatar(code, px) {
   px = px || 3;
-  const r = rngOf(hash('av:' + code));
-  const skin = ['#ffd7a8', '#f3c69b', '#e6b083', '#d99a63'][Math.floor(r() * 4)];
-  const hair = ['#2b2d42', '#5c3b1e', '#8b5a2b', '#1b1b1f', '#6b7280'][Math.floor(r() * 5)];
+  const r = rngOf(hash('av2:' + code));
+  const N = 12;
+  const skins = [['#ffe3c2', '#eec9a3'], ['#f7d3a8', '#dfb98c'], ['#e8bd93', '#cda276'], ['#d9a273', '#bf8a5e']];
+  const hairs = ['#2b2d42', '#4a2f1b', '#7a4a22', '#1b1b1f', '#6b7280', '#a3411f', '#c98b3a'];
+  const sk = skins[Math.floor(r() * 4)];
+  const hair = hairs[Math.floor(r() * hairs.length)];
   const shirt = PAL[Math.floor(r() * PAL.length)];
-  const N = 8, g = [];
+  const style = Math.floor(r() * 4), eyeT = Math.floor(r() * 3), mouthT = Math.floor(r() * 3), acc = Math.floor(r() * 3);
+  const g = [];
   for (let y = 0; y < N; y++) { g.push([]); for (let x = 0; x < N; x++) g[y].push(null); }
-  const set = (x, y, c) => { if (x >= 0 && x < N && y >= 0 && y < N) g[y][x] = c; };
-  for (let x = 1; x < 7; x++) { set(x, 0, hair); set(x, 1, hair); }
-  set(0, 1, hair); set(7, 1, hair);
-  for (let y = 2; y < 6; y++) for (let x = 1; x < 7; x++) set(x, y, skin);
-  const ey = r() < .5 ? 3 : 4;
-  set(2, ey, '#0b0b12'); set(5, ey, '#0b0b12');
-  set(3, 5, '#a83b3b'); set(4, 5, '#a83b3b');
-  for (let x = 1; x < 7; x++) { set(x, 6, shirt); set(x, 7, shirt); }
+  const put = (x, y, c) => { if (x >= 0 && x < N && y >= 0 && y < N && c) g[y][x] = c; };
+  const rect = (x0, y0, x1, y1, c) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) put(x, y, c); };
+
+  rect(1, 9, 10, 11, shirt);            // 衣服
+  rect(2, 9, 9, 9, light(shirt, .25));  // 衣领高光
+  put(5, 9, dark(shirt, .4)); put(6, 9, dark(shirt, .4));
+  rect(2, 3, 9, 8, sk[0]);              // 脸
+  for (let y = 3; y <= 8; y++) put(9, y, sk[1]);   // 右侧阴影
+  put(2, 8, null); put(9, 8, null);                // 下巴收角
+
+  if (style === 0) { rect(2, 1, 9, 2, hair); rect(1, 2, 2, 6, hair); rect(9, 2, 9, 6, hair); }
+  else if (style === 1) { rect(2, 0, 9, 2, hair); rect(1, 2, 2, 8, hair); rect(9, 2, 9, 8, hair); }
+  else if (style === 2) { rect(2, 1, 9, 2, hair); rect(2, 2, 3, 2, hair); rect(8, 2, 9, 2, hair); }
+  else { rect(2, 2, 9, 2, hair); rect(1, 3, 2, 5, hair); rect(9, 3, 9, 5, hair); }
+  put(9, 2, light(hair, .25));
+
+  const ey = 5;
+  if (eyeT === 0) { put(4, ey, '#141420'); put(7, ey, '#141420'); put(4, ey - 1, '#ffffff'); put(7, ey - 1, '#ffffff'); }
+  else if (eyeT === 1) { put(3, ey, '#141420'); put(4, ey, '#141420'); put(7, ey, '#141420'); put(8, ey, '#141420'); }
+  else {
+    put(3, ey, '#141420'); put(4, ey, '#141420'); put(7, ey, '#141420'); put(8, ey, '#141420');
+    put(3, ey - 1, '#9fe0ff'); put(8, ey - 1, '#9fe0ff'); put(2, ey, '#2b2d42'); put(9, ey, '#2b2d42');
+  }
+  if (mouthT === 0) { put(5, 7, '#a83b3b'); put(6, 7, '#a83b3b'); }
+  else if (mouthT === 1) { rect(4, 7, 7, 7, '#a83b3b'); }
+  else { put(5, 7, '#a83b3b'); put(6, 7, '#a83b3b'); put(5, 8, '#7d2a2a'); put(6, 8, '#7d2a2a'); }
+
+  if (acc === 1) { put(3, 0, hair); put(4, 0, hair); }
+  if (acc === 2) { put(9, 3, '#ff4d5e'); put(9, 4, '#ff4d5e'); }
+
   const cells = [];
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (g[y][x]) cells.push([x, y, g[y][x]]);
   return toSVG(cells, N, '#0c0e1e', px);
@@ -202,9 +329,93 @@ function slots(n, cap) {
   for (let i = 0; i < cap; i++) s += '<span class="slotdot' + (i < n ? ' on' : '') + '"></span>';
   return s;
 }
+/* 队伍显示名：XX队（第N组） */
+const CN = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+function cn(n) {
+  n = parseInt(n, 10);
+  if (!n || n < 1) return '';
+  if (n <= 10) return n === 10 ? '十' : CN[n];
+  if (n < 20) return '十' + CN[n - 10];
+  const t = Math.floor(n / 10), o = n % 10;
+  return CN[t] + '十' + (o ? CN[o] : '');
+}
+function dispName(g) {
+  if (!g) return '';
+  let base = String(g.name || '');
+  const isGroup = /组$/.test(base);           // 已经是"第一组"这种名字，就不再加后缀
+  if (g.seq && !isGroup) {
+    if (!/队$/.test(base)) base += '队';
+    base += '（第' + cn(g.seq) + '组）';
+  }
+  return base;
+}
 
 /* ================= 状态 ================= */
 let ST = null, CUR = null, ADM = null, ADMPW = sessionStorage.getItem('admpw') || '', selCode = null;
+let lastSig = '', lastAdmSig = '', lastTouch = 0, busy = false;
+
+// 记录用户操作时间：滚动/触摸期间不刷新，避免画面跳动
+['scroll', 'touchstart', 'touchmove', 'wheel', 'pointerdown', 'keydown'].forEach(ev =>
+  window.addEventListener(ev, () => { lastTouch = Date.now(); }, { passive: true }));
+
+/* ================= 提醒（震动 / 标题闪烁 / 系统通知，无声音） ================= */
+let titleTimer = null;
+const TITLE = '组队大厅';
+function buzz() { try { navigator.vibrate && navigator.vibrate([70, 60, 140]); } catch (e) { } }
+function blinkTitle(n) {
+  clearInterval(titleTimer);
+  let on = false;
+  titleTimer = setInterval(() => { document.title = (on = !on) ? '（' + n + '）新消息！' : TITLE; }, 900);
+}
+function stopBlink() { clearInterval(titleTimer); titleTimer = null; document.title = TITLE; }
+function notifyNew(list) {
+  if (!list.length) return;
+  buzz(); blinkTitle(list.length);
+  toast('🔔 ' + list.join('；'));
+  try {
+    if (window.Notification && Notification.permission === 'granted' && document.hidden) {
+      new Notification('组队大厅', { body: list.join('；') });
+    }
+  } catch (e) { }
+}
+function diffEvents(prev, now) {
+  const ev = [];
+  if (!prev) return ev;
+  const pid = new Set((prev.invites || []).map(x => x.id));
+  (now.invites || []).forEach(v => { if (!pid.has(v.id)) ev.push('「' + v.team_name + '」邀请你加入'); });
+  const pr = new Set((prev.relations || []).filter(r => r.status === 'pending' && !r.mine).map(r => r.id));
+  (now.relations || []).filter(r => r.status === 'pending' && !r.mine)
+    .forEach(r => { if (!pr.has(r.id)) ev.push(r.other_name + ' 想和你成为搭档'); });
+  const pq = new Set((prev.my_requests || []).map(r => r.id));
+  const nq = new Set((now.my_requests || []).map(r => r.id));
+  pq.forEach(id => { if (!nq.has(id)) ev.push('你有一条申请已被处理'); });
+  if (!(prev.leader_tasks || []).length && (now.leader_tasks || []).length) ev.push('你已被批准为组长，可以建队了');
+  const pg = new Set((prev.my_groups || []).map(g => g.task_id + ':' + g.team_id));
+  (now.my_groups || []).forEach(g => { if (!pg.has(g.task_id + ':' + g.team_id)) ev.push('你已加入一支队伍'); });
+  return ev;
+}
+function copyText(s) {
+  const done = () => toast('已复制，粘贴到班级群就行');
+  const fallback = () => {
+    const ta = document.createElement('textarea');
+    ta.value = s; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { toast('复制失败，请长按手动复制', true); }
+    ta.remove();
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(s).then(done, fallback);
+  else fallback();
+}
+function inviteText() {
+  const t = ST.tasks.find(x => x.id === CUR);
+  const myId = (gOf(CUR) || {}).team_id;
+  const g = teamsOf(CUR).find(x => x.id === myId);
+  const rest = g ? (g.capacity - g.member_count) : 0;
+  return '【组队】我在「' + (t ? t.title : '') + '」的『' + (g ? g.name : '') + '』队' +
+    (g ? '，还差 ' + rest + ' 人' : '') + '。\n' +
+    '打开 https://plutomkzy.github.io/kebiao/ → 点「学生入口」→ 第一格输 245 → 第二格输学号，\n' +
+    '在最上面带「NEW!」的卡片上点「同意加入」就进队了。';
+}
 
 function toast(m, err) {
   const d = document.createElement('div');
@@ -220,20 +431,34 @@ function unOf(t) { return (ST.ungrouped || []).filter(x => x.task_id === t); }
 function nameOf(code) { const c = (ST.classmates || []).find(x => x.code === code); return c ? c.name : code; }
 function canCreate(t) { return (ST.leader_tasks || []).indexOf(t) >= 0; }
 
-async function load(keep) {
+async function load(keep, force) {
+  // 1) 用户正在滑动：先不刷新（防止画面跳动）
+  if (!force && Date.now() - lastTouch < 1500) return;
+  if (busy) return;
+  busy = true;
   const y = window.scrollY;
-  const j = await call('team_state', me());
+  let j;
+  try { j = await call('team_state', me()); } finally { busy = false; }
   if (!j.ok) {
     $('#lobby').innerHTML = '<div class="pk sec"><div class="mut">' + esc(j.msg || '读取失败') +
-      '<br>若提示函数不存在，请先在 Supabase 运行《组队系统补丁.sql》与《组队系统补丁2.sql》。</div></div>';
+      '<br>若提示函数不存在，请先在 Supabase 运行《组队系统补丁.sql》《组队系统补丁2.sql》《组队修复补丁.sql》。</div></div>';
     return;
   }
+  // 2) 数据没变化：完全不碰 DOM（这是跳动的根源）
+  const sig = JSON.stringify(j);
+  if (sig === lastSig) { if (ADMPW) loadAdmin(true); return; }
+  lastSig = sig;
+
+  const events = diffEvents(ST, j);      // 与上一次对比，找出新消息
   ST = j;
   if (!CUR && ST.tasks.length) CUR = ST.tasks[0].id;
   render();
-  if (keep) window.scrollTo(0, y);
+  if (events.length) notifyNew(events);
+  // 3) 用 rAF 恢复滚动位置，避免重排瞬间的抖动
+  if (keep) requestAnimationFrame(() => window.scrollTo(0, y));
   if (ADMPW) loadAdmin(true);
 }
+function refreshNow() { return load(true, true); }
 
 function render() {
   $('#myAvatar').innerHTML = avatar(ST.me.code, 6);
@@ -262,7 +487,7 @@ function renderInvites() {
   $('#invites').innerHTML = list.map(v =>
     '<div class="pk mail"><span class="new">NEW!</span>' +
     '<div class="row"><div class="crest" style="width:44px;height:44px">' + crest(v.team_name, 3.7) + '</div>' +
-    '<div class="grow"><div class="tname">' + esc(v.team_name) + ' 邀请你加入</div>' +
+    '<div class="grow"><div class="tname">' + esc(dispName({ name: v.team_name, seq: v.seq })) + ' 邀请你加入</div>' +
     '<div class="mut">来自 ' + esc(v.from_name) + (v.slogan ? ' · ' + esc(v.slogan) : '') + '</div></div></div>' +
     '<div class="row" style="margin-top:9px">' +
     '<button class="b-green grow" data-acc="' + esc(v.id) + '">同意加入</button>' +
@@ -278,7 +503,7 @@ function wire(sel, fn) {
   document.querySelectorAll(sel).forEach(b => b.onclick = async () => {
     const r = await fn(b);
     if (r === null) return;
-    toast(r.msg || '', !r.ok); load(true);
+    toast(r.msg || '', !r.ok); refreshNow();
   });
 }
 
@@ -290,7 +515,7 @@ function renderMine() {
   let h = '';
   if (team) {
     const lead = (team.members || []).find(m => m.role === 'leader');
-    h += '<div class="pk sec"><h2>我的队伍 · ' + esc(team.name) + '</h2>' +
+    h += '<div class="pk sec"><h2>我的队伍 · ' + esc(dispName(team)) + '</h2>' +
       '<div class="row"><div class="crest">' + crest(team.name, 5) + '</div><div class="grow">' +
       '<div class="mut">' + (team.slogan ? esc(team.slogan) + '<br>' : '') +
       '组长：' + esc(lead ? lead.name : '—') + '</div>' +
@@ -335,25 +560,25 @@ function renderMine() {
   if (lv) lv.onclick = async () => {
     if (!confirm('确定申请退组？需要组长同意。')) return;
     const r = await call('team_request', P({ p_kind: 'leave', p_task: CUR, p_target: null, p_note: '' }));
-    toast(r.msg || '', !r.ok); load(true);
+    toast(r.msg || '', !r.ok); refreshNow();
   };
   const kb = $('#kickBtn');
   if (kb) kb.onclick = async () => {
     if (!confirm('确定申请踢出该成员？需管理员批准。')) return;
     const r = await call('team_request', P({ p_kind: 'kick', p_task: CUR, p_target: $('#kickSel').value, p_note: '' }));
-    toast(r.msg || '', !r.ok); load(true);
+    toast(r.msg || '', !r.ok); refreshNow();
   };
   const ab = $('#applyBtn');
   if (ab) ab.onclick = async () => {
     const r = await call('team_apply_leader', P({ p_task: CUR, p_note: '' }));
-    toast(r.msg || '', !r.ok); load(true);
+    toast(r.msg || '', !r.ok); refreshNow();
   };
   const cb = $('#createBtn');
   if (cb) cb.onclick = async () => {
     const nm = $('#tName').value.trim();
     if (!nm) { toast('请输入队伍名称', true); return; }
     const r = await call('team_create', P({ p_task: CUR, p_name: nm, p_slogan: $('#tSlogan').value.trim(), p_icon: '盾' }));
-    toast(r.msg || '', !r.ok); load(true);
+    toast(r.msg || '', !r.ok); refreshNow();
   };
   const tn = $('#tName'), cp = $('#crestPreview');
   if (tn && cp) {
@@ -365,60 +590,81 @@ function renderMine() {
 /* ---------- 大厅 ---------- */
 function renderLobby() {
   const t = ST.tasks.find(x => x.id === CUR);
+  const isLead = gOf(CUR) && gOf(CUR).role === 'leader';
+
+  // 大厅只对组长开放
+  if (!isLead) {
+    const invites = (ST.invites || []).filter(v => v.task_id === CUR);
+    $('#lobby').innerHTML = '<div class="pk sec"><h2>大厅</h2>' +
+      '<div class="mut">大厅只对组长开放。<br>你只需要等组长来邀请你——收到邀请时最上面会出现带「NEW!」的卡片，' +
+      '点「同意加入」就进队了。</div>' +
+      (invites.length ? '<div class="mut" style="margin-top:6px">当前有 ' + invites.length + ' 条邀请等你看 ↑</div>' : '') +
+      '</div>';
+    return;
+  }
+
   const teams = teamsOf(CUR);
-  const leader = gOf(CUR) && gOf(CUR).role === 'leader';
+  const un = unOf(CUR).filter(u => u.code !== CODE);
   let h = '<div class="pk sec"><h2>大厅 · ' + esc(t ? t.title : '') + '</h2>' +
     '<div class="mut">' + (t ? '容量 ' + t.size + ' 人' + (t.size_note ? '（' + esc(t.size_note) + '）' : '') : '') +
-    ' · 队伍 ' + teams.length + ' 支 · 未入组 ' + unOf(CUR).length + ' 人' +
+    ' · 队伍 ' + teams.length + ' 支 · 未入组 ' + un.length + ' 人' +
     (t && t.deadline ? ' · 截止 ' + esc(String(t.deadline).slice(0, 16).replace('T', ' ')) : '') + '</div>';
-  if (!teams.length) h += '<div class="empty" style="margin-top:10px">还没有队伍，等组长开团</div>';
-  else h += teams.map(g => {
+
+  // ① 未分组的人排在最前面，直接邀请
+  h += '<div class="hr"></div><h2>还没组队的人（先从这里挑）</h2>';
+  if (un.length) {
+    h += '<div class="row">' + un.map(u =>
+      '<button class="b-blue sm" data-inv="' + esc(u.code) + '">邀请 ' + esc(u.name) + '</button>').join('') + '</div>' +
+      '<div class="row" style="margin-top:8px">' +
+      '<button class="b-ghost sm" id="copyInv">📋 复制招人话术（发班级群）</button></div>' +
+      '<div class="mut" style="margin-top:4px">对方同意后会自动进队，并从这里消失。</div>';
+  } else {
+    h += '<div class="mut">这个任务里所有人都已入组，或者都已经被邀请过了。</div>';
+  }
+
+  // ② 已有队伍
+  h += '<div class="hr"></div><h2>已有队伍</h2>';
+  h += teams.length ? teams.map(g => {
     const full = g.member_count >= g.capacity;
     const mine = gOf(CUR) && gOf(CUR).team_id === g.id;
     return '<div class="pk team' + (full ? ' full' : '') + (mine ? ' mine' : '') + '" data-team="' + esc(g.id) + '">' +
       '<div class="crest">' + crest(g.name, 5) + '</div>' +
-      '<div class="grow"><div class="tname">' + esc(g.name) + (mine ? ' ★' : '') + '</div>' +
+      '<div class="grow"><div class="tname">' + esc(dispName(g)) + (mine ? ' ★' : '') + '</div>' +
       '<div class="mut">组长 ' + esc(g.leader_name || '—') + (g.slogan ? ' · ' + esc(g.slogan) : '') + '</div>' +
       '<div style="margin-top:5px">' + slots(g.member_count, g.capacity) + '</div>' +
       '<div class="membar">' + (g.members || []).map(m =>
         '<span class="mavatar' + (m.role === 'leader' ? ' leader' : '') + '">' + avatar(m.code, 2.6) + '<b>' + esc(m.name) + '</b></span>').join('') +
       '</div></div></div>';
-  }).join('');
+  }).join('') : '<div class="empty">还没有队伍，你是第一个组长，去建队吧</div>';
   h += '</div>';
 
-  if (leader) {
-    const un = unOf(CUR).filter(u => u.code !== CODE);
-    h += '<div class="pk sec"><h2>未分组（组长可见）</h2>' +
-      (un.length ? '<div class="row">' + un.map(u =>
-        '<button class="b-blue sm" data-inv="' + esc(u.code) + '">邀请 ' + esc(u.name) + '</button>').join('') + '</div>'
-        : '<div class="mut">这个任务所有人都已入组</div>') + '</div>';
-  }
   $('#lobby').innerHTML = h;
   wire('[data-inv]', b => call('team_invite', P({ p_task: CUR, p_to: b.dataset.inv })));
+  const ci = $('#copyInv');
+  if (ci) ci.onclick = () => copyText(inviteText());
 }
 
 /* ---------- 关系网 ---------- */
 function renderRel() {
-  const rels = ST.relations || [];
+  const rels = (ST.relations || []).filter(r => r.rtype === '搭档');
   const act = rels.filter(r => r.status === 'active');
   const pend = rels.filter(r => r.status === 'pending');
-  let h = '<div class="mut">关系类型：搭档（组队优先放同组）· 好友 · 学习伙伴。双方确认后生效，与分组无关。</div>';
+  let h = '<div class="mut">搭档：<b>一人只能有一个</b>，双方确认后生效。组队时系统会优先把搭档放进同一队（到期自动分配也遵守）。</div>';
 
-  // 关系图
   h += '<canvas class="relmap" id="relmap" width="700" height="320"></canvas>';
 
   h += '<div style="margin-top:8px">' +
-    (act.length ? act.map(r => '<span class="relchip ' + (r.rtype === '搭档' ? 'a' : r.rtype === '好友' ? 'f' : 'p') + '">' +
+    (act.length ? act.map(r => '<span class="relchip a">' +
       '<span style="display:inline-block;width:20px;height:20px">' + avatar(r.other_code, 2.5) + '</span>' +
-      '<b>' + esc(r.other_name) + '</b><span class="mut">' + esc(r.rtype) + '</span>' +
+      '<b>' + esc(r.other_name) + '</b><span class="mut">搭档</span>' +
       '<button class="b-ghost sm" data-relend="' + esc(r.id) + '">解除</button></span>').join('')
-      : '<span class="mut">还没有已生效的关系</span>') + '</div>';
+      : '<span class="mut">还没有搭档</span>') + '</div>';
 
   if (pend.length) {
     h += '<div style="margin-top:10px"><h2>待确认</h2>' + pend.map(r => {
       const mine = r.mine;
       return '<div class="pk inset" style="padding:8px;margin-bottom:6px"><div class="row">' +
-        '<span class="grow">' + esc(r.other_name) + ' · 「' + esc(r.rtype) + '」' + (mine ? '（我发出的）' : '（对方邀请）') + '</span>' +
+        '<span class="grow">' + esc(r.other_name) + ' · 搭档邀请' + (mine ? '（我发出的）' : '（对方邀请）') + '</span>' +
         (mine ? '<button class="b-ghost sm" data-relend="' + esc(r.id) + '">撤回</button>'
               : '<button class="b-green sm" data-relok="' + esc(r.id) + '">同意</button>' +
                 '<button class="b-ghost sm" data-relend="' + esc(r.id) + '">拒绝</button>') +
@@ -426,19 +672,23 @@ function renderRel() {
     }).join('') + '</div>';
   }
 
-  h += '<div style="margin-top:12px"><h2>建立关系</h2><div class="row">' +
-    '<select id="relWho" class="grow">' + (ST.classmates || []).filter(c => c.code !== CODE)
-      .map(c => '<option value="' + esc(c.code) + '">' + esc(c.name) + '（' + esc(c.code) + '）</option>').join('') + '</select>' +
-    '<select id="relType" style="max-width:130px"><option>搭档</option><option>好友</option><option>学习伙伴</option></select>' +
-    '<button class="b-purple" id="relBtn">发出邀请</button></div></div>';
+  if (!act.length) {
+    h += '<div style="margin-top:12px"><h2>找搭档</h2><div class="row">' +
+      '<select id="relWho" class="grow">' + (ST.classmates || []).filter(c => c.code !== CODE)
+        .map(c => '<option value="' + esc(c.code) + '">' + esc(c.name) + '（' + esc(c.code) + '）</option>').join('') + '</select>' +
+      '<button class="b-purple" id="relBtn">发出搭档邀请</button></div>' +
+      '<div class="mut" style="margin-top:4px">对方同意后，你们就成为搭档。</div></div>';
+  } else {
+    h += '<div class="mut" style="margin-top:10px">已有搭档。想换人先点上面的「解除」。</div>';
+  }
 
   $('#relBox').innerHTML = h;
   wire('[data-relend]', b => call('relation_end', P({ p_id: b.dataset.relend })));
   wire('[data-relok]', b => call('relation_respond', P({ p_id: b.dataset.relok, p_accept: true })));
   const rb = $('#relBtn');
   if (rb) rb.onclick = async () => {
-    const r = await call('relation_request', P({ p_to: $('#relWho').value, p_type: $('#relType').value }));
-    toast(r.msg || '', !r.ok); load(true);
+    const r = await call('relation_request', P({ p_to: $('#relWho').value, p_type: '搭档' }));
+    toast(r.msg || '', !r.ok); load(true, true);
   };
   drawRelMap(rels);
 }
@@ -521,6 +771,28 @@ function renderAdmin() {
   });
   h += '</div>';
 
+  // 队伍排序（名字 → XX队（第N组））
+  h += '<div style="margin-top:12px"><h2>队伍排序（显示成 XX队（第N组））</h2>' +
+    '<div class="mut">点 ↑↓ 调顺序，或直接填序号再点「存」；「按当前顺序重编号」会从 1 开始依次编号。</div>';
+  (ADM.tasks || []).forEach(t => {
+    const ts = (ADM.teams || []).filter(x => x.task_id === t.id);
+    if (!ts.length) return;
+    h += '<div class="pk inset" style="padding:8px;margin:8px 0"><div class="row">' +
+      '<b class="grow">' + esc(t.title) + '（' + ts.length + ' 队）</b>' +
+      '<button class="b-blue sm" data-renum="' + esc(t.id) + '">按当前顺序重编号</button></div>';
+    ts.forEach((g, i) => {
+      h += '<div class="row" style="margin-top:6px">' +
+        '<span class="grow">' + (i + 1) + '. ' + esc(dispName(g)) +
+        ' <span class="mut">' + (g.members || []).length + '人</span></span>' +
+        '<input type="number" min="1" max="99" value="' + (g.seq || '') + '" style="max-width:74px" data-seq="' + esc(g.id) + '">' +
+        (i > 0 ? '<button class="b-ghost sm" data-up="' + esc(g.id) + '" data-prev="' + esc(ts[i - 1].id) + '">↑</button>' : '') +
+        (i < ts.length - 1 ? '<button class="b-ghost sm" data-dn="' + esc(g.id) + '" data-next="' + esc(ts[i + 1].id) + '">↓</button>' : '') +
+        '<button class="b-green sm" data-saveseq="' + esc(g.id) + '">存</button></div>';
+    });
+    h += '</div>';
+  });
+  h += '</div>';
+
   // 指派组长
   h += '<div style="margin-top:12px"><h2>指派 / 更换组长</h2><div class="row">' +
     '<select id="aLTask" class="grow">' + (ADM.tasks || []).map(t => '<option value="' + esc(t.id) + '">' + esc(t.title) + '</option>').join('') + '</select>' +
@@ -537,8 +809,8 @@ function renderAdmin() {
     h += '<details style="margin-top:6px"><summary style="cursor:pointer">' + esc(t.title) + '（' + ts.length + ' 队）</summary>';
     ts.forEach(g => {
       h += '<div class="pk inset team" data-dropteam="' + esc(g.id) + '" data-task="' + esc(t.id) + '" style="padding:8px;margin:6px 0">' +
-        '<div class="crest" style="width:44px;height:44px">' + crest(g.name, 3.7) + '</div>' +
-        '<div class="grow"><b>' + esc(g.name) + '</b> <span class="mut">' + (g.members || []).length + '/' + g.capacity + '</span>' +
+        '<div class="crest" style="width:52px;height:52px">' + crest(g.name, 3.25) + '</div>' +
+        '<div class="grow"><b>' + esc(dispName(g)) + '</b> <span class="mut">' + (g.members || []).length + '/' + g.capacity + '</span>' +
         '<div class="membar">' + (g.members || []).map(m =>
           '<span class="mavatar draggable' + (m.role === 'leader' ? ' leader' : '') + '" draggable="true" data-code="' + esc(m.code) + '">' +
           avatar(m.code, 2.6) + '<b>' + esc(m.name) + '</b></span>').join('') + '</div>' +
@@ -581,12 +853,20 @@ function renderAdmin() {
     const code = $('#aCode').value.trim();
     if (!code) { toast('请输入学号', true); return; }
     const r = await call('team_admin_make_leader', { p_password: ADMPW, p_task: $('#aLTask').value, p_code: code });
-    toast(r.msg || '', !r.ok); load(true);
+    toast(r.msg || '', !r.ok); refreshNow();
   };
   wire('[data-setlead]', b => {
     const code = document.querySelector('[data-newlead="' + b.dataset.setlead + '"]').value;
     return call('team_admin_set_leader', { p_password: ADMPW, p_team: b.dataset.setlead, p_code: code });
   });
+  wire('[data-renum]', b => call('team_admin_renumber', { p_password: ADMPW, p_task: b.dataset.renum }));
+  wire('[data-saveseq]', b => {
+    const el = document.querySelector('[data-seq="' + b.dataset.saveseq + '"]');
+    const v = el && el.value ? parseInt(el.value, 10) : null;
+    return call('team_admin_set_seq', { p_password: ADMPW, p_team: b.dataset.saveseq, p_seq: v });
+  });
+  wire('[data-up]', b => call('team_admin_swap', { p_password: ADMPW, p_a: b.dataset.prev, p_b: b.dataset.up }));
+  wire('[data-dn]', b => call('team_admin_swap', { p_password: ADMPW, p_a: b.dataset.next, p_b: b.dataset.dn }));
 
   // 拖拽 / 点选调组
   let dragCode = null;
@@ -616,13 +896,22 @@ function renderAdmin() {
     if (!code) { toast('先选一个成员', true); return; }
     const r = await call('team_admin_move', { p_password: ADMPW, p_task: task, p_code: code, p_team: team });
     toast(r.msg || '', !r.ok);
-    selCode = null; load(true);
+    selCode = null; refreshNow();
   }
 }
 
 /* ---------- 事件 ---------- */
-$('#refresh').onclick = () => load(true);
-$('#reload2').onclick = () => load(true);
+$('#refresh').onclick = () => refreshNow();
+$('#reload2').onclick = () => refreshNow();
+$('#ntfBtn').onclick = async () => {
+  if (!window.Notification) { toast('这个浏览器不给网页发系统通知，页面开着时的提醒仍然有效', true); return; }
+  try {
+    const p = await Notification.requestPermission();
+    if (p === 'granted') { $('#ntfBtn').textContent = '🔔✓'; toast('已开启提醒：页面在后台时也尽量通知你'); }
+    else toast('没有开启系统通知，页面开着时仍会响铃、闪烁、震动', true);
+  } catch (e) { toast('开启失败，请用浏览器直接打开（微信内可能不支持）', true); }
+};
+if (window.Notification && Notification.permission === 'granted') $('#ntfBtn').textContent = '🔔✓';
 $('#admgologin').onclick = () => {
   ADMPW = $('#admpw').value.trim();
   if (!ADMPW) { toast('请输入管理员口令', true); return; }
@@ -630,8 +919,20 @@ $('#admgologin').onclick = () => {
 };
 if (ADMPW) $('#admpw').value = ADMPW;
 
+// 切回页面：立刻查一次，并提示离开期间的新消息
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  stopBlink();
+  refreshNow();
+});
+
 load();
-setInterval(() => load(true), 5000);
+// 自适应轮询：前台 4 秒，后台 20 秒（手机后台会被系统限速，属正常）
+(function poll() {
+  const wait = document.hidden ? 20000 : 4000;
+  setTimeout(() => { load(true).finally(poll); }, wait);
+})();
 </script>
 </body>
 </html>
+
