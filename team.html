@@ -3,122 +3,148 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#0f1020">
+<meta name="theme-color" content="#0b0d1c">
 <title>组队大厅</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230f1020'/%3E%3Crect x='10' y='10' width='44' height='44' fill='%23ff4757'/%3E%3Crect x='20' y='20' width='10' height='10' fill='%23fff'/%3E%3Crect x='34' y='20' width='10' height='10' fill='%23fff'/%3E%3Crect x='20' y='36' width='24' height='6' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Crect width='8' height='8' fill='%230b0d1c'/%3E%3Crect x='1' y='2' width='2' height='2' fill='%23ffd7a8'/%3E%3Crect x='5' y='2' width='2' height='2' fill='%23ffd7a8'/%3E%3Crect x='2' y='5' width='4' height='1' fill='%23ff4757'/%3E%3C/svg%3E">
 <style>
 :root{
-  --dark:#0f1020; --dark2:#171a33; --line:#000;
-  --red:#ff4757; --green:#2ed573; --blue:#1e90ff; --orange:#ffa502; --purple:#a55eea; --cyan:#22d3ee;
-  --ink:#f2f2f7; --dim:#9aa0b5;
+  --bg:#0b0d1c; --bg2:#141733; --bg3:#1d2148;
+  --line:#05060f; --ink:#f4f4ff; --dim:#9aa2c8;
+  --red:#ff4d5e; --green:#3ddc84; --blue:#3d9bff; --orange:#ffb02e; --purple:#b06bff; --cyan:#2fe6e6;
+  --gold:#ffd23f;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{
-  font-family:"Microsoft YaHei","PingFang SC",sans-serif;
-  background:var(--dark); color:var(--ink); padding-bottom:90px;
+  font-family:"SimSun","宋体","Microsoft YaHei",sans-serif;
+  background:var(--bg); color:var(--ink); padding:0 0 92px; min-height:100vh;
+  image-rendering:pixelated;
   background-image:
-    repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 3px),
-    radial-gradient(80% 60% at 50% 0%, rgba(30,144,255,.18), transparent 70%);
-  min-height:100vh;
+    repeating-linear-gradient(0deg, rgba(255,255,255,.028) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.02) 0 1px, transparent 1px 4px);
 }
-.wrap{max-width:760px;margin:0 auto;padding:14px 12px}
-/* 像素通用件 */
-.px{border:3px solid var(--line); box-shadow:0 4px 0 rgba(0,0,0,.55); background:var(--dark2)}
-.px.flat{box-shadow:none}
-.tab,.btn,.chip,button{font-family:inherit;cursor:pointer;border:3px solid var(--line);box-shadow:0 4px 0 rgba(0,0,0,.6);
-  background:#22254a;color:var(--ink);transition:transform .06s, box-shadow .06s}
-button:active,.btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.6)}
-.btn{display:inline-block;padding:9px 14px;font-size:15px;font-weight:700;text-decoration:none}
-.btn.red{background:var(--red);color:#1b0008}
-.btn.green{background:var(--green);color:#00210f}
-.btn.blue{background:var(--blue);color:#001028}
-.btn.orange{background:var(--orange);color:#231300}
-.btn.purple{background:var(--purple);color:#180029}
-.btn.ghost{background:#1b1e3a}
-.btn.sm{padding:6px 10px;font-size:13.5px}
-.btn.block{display:block;width:100%;text-align:center}
-h1{font-size:22px;letter-spacing:2px}
-h2{font-size:17px;letter-spacing:1px;margin-bottom:8px}
-.mut{color:var(--dim);font-size:13.5px;line-height:1.6}
-.head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-.logo{width:44px;height:44px;background:var(--red);border:3px solid #000;box-shadow:0 4px 0 rgba(0,0,0,.55);
-  display:grid;place-items:center;font-weight:900;font-size:20px;color:#fff}
-.badge{display:inline-block;padding:3px 9px;font-size:12.5px;font-weight:700;border:2px solid #000;background:var(--blue);color:#001028}
-.badge.leader{background:var(--orange);color:#231300}
-.badge.none{background:#3a3f63;color:#cfd6ff}
-.tabs{display:flex;gap:8px;overflow-x:auto;padding:4px 0 10px}
-.tab{flex:0 0 auto;padding:8px 14px;font-size:14.5px;font-weight:700;background:#1b1e3a}
-.tab.on{background:var(--cyan);color:#00212b}
-.card{padding:12px;margin-bottom:12px}
-.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.grow{flex:1}
-.mem{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;margin:3px 4px 0 0;font-size:13.5px;
-  background:#1b1e3a;border:2px solid #000}
-.mem.leader{background:var(--orange);color:#231300;font-weight:700}
-.icon{width:38px;height:38px;display:grid;place-items:center;font-size:19px;font-weight:900;
-  border:3px solid #000;background:var(--purple);color:#fff}
-.team{display:flex;gap:10px;align-items:flex-start;padding:11px;margin-bottom:10px}
-.team.full{opacity:.62}
-input[type=text],input[type=password],select,textarea{
-  width:100%;font-family:inherit;font-size:15.5px;padding:9px;background:#0c0e1e;color:var(--ink);
-  border:3px solid #000;box-shadow:inset 0 3px 0 rgba(0,0,0,.5);outline:none}
+.wrap{max-width:820px;margin:0 auto;padding:12px 10px}
+svg{display:block}
+/* ===== 像素组件 ===== */
+.pk{
+  border:3px solid var(--line); background:var(--bg2);
+  box-shadow:0 4px 0 var(--line), inset 0 3px 0 rgba(255,255,255,.05);
+}
+.pk.inset{box-shadow:inset 0 4px 0 rgba(0,0,0,.5)}
+button,.btn{font-family:inherit;cursor:pointer;border:3px solid var(--line);background:var(--bg3);color:var(--ink);
+  box-shadow:0 4px 0 var(--line);padding:9px 13px;font-size:15px;font-weight:700;
+  transition:transform .05s steps(1), box-shadow .05s steps(1); letter-spacing:1px}
+button:active,.btn:active{transform:translateY(4px);box-shadow:0 0 0 var(--line)}
+.btn{display:inline-block;text-decoration:none;text-align:center}
+.b-red{background:var(--red);color:#2a0006}.b-green{background:var(--green);color:#00301a}
+.b-blue{background:var(--blue);color:#001733}.b-orange{background:var(--orange);color:#2a1600}
+.b-purple{background:var(--purple);color:#1c0033}.b-cyan{background:var(--cyan);color:#00292b}
+.b-ghost{background:#20244d}
+.sm{padding:6px 9px;font-size:13.5px}
+.block{display:block;width:100%}
+.mut{color:var(--dim);font-size:13.5px;line-height:1.65}
+h1{font-size:19px;letter-spacing:2px}
+h2{font-size:16px;letter-spacing:1px;margin-bottom:8px;color:#fff}
+h2::before{content:"■ ";color:var(--gold)}
+.sec{padding:12px;margin-bottom:12px}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.grow{flex:1 1 auto;min-width:0}
+body{overflow-x:hidden}
+input,select{max-width:100%}
+/* ===== 玩家 HUD ===== */
+.hud{display:flex;gap:10px;align-items:center;padding:10px;margin-bottom:12px}
+.plate{display:flex;gap:9px;align-items:center;flex:1;min-width:0}
+.pname{font-size:17px;font-weight:800;letter-spacing:1px}
+.tagline{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:3px}
+.tag{font-size:12px;padding:2px 7px;border:2px solid var(--line);background:var(--blue);color:#001733;font-weight:700}
+.tag.leader{background:var(--orange);color:#2a1600}
+.tag.lv{background:var(--purple);color:#1c0033}
+.slotdot{display:inline-block;width:11px;height:11px;border:2px solid var(--line);background:#111533;margin-right:3px}
+.slotdot.on{background:var(--gold)}
+/* ===== 任务标签 ===== */
+.tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px}
+.tab{flex:0 0 auto;font-size:14.5px;background:#191d3d}
+.tab.on{background:var(--cyan);color:#00292b;box-shadow:0 4px 0 var(--line), 0 0 0 3px rgba(47,230,230,.25)}
+/* ===== 邀请（急件） ===== */
+.mail{position:relative;padding:12px;margin-bottom:10px;background:linear-gradient(180deg,#2a1f52,#1a1638)}
+.mail .new{position:absolute;right:-6px;top:-10px;background:var(--red);color:#fff;font-size:12px;font-weight:800;
+  padding:2px 7px;border:2px solid var(--line);animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:.25}}
+/* ===== 队伍卡 ===== */
+.crest{width:60px;height:60px;flex:0 0 auto;border:3px solid var(--line);box-shadow:0 3px 0 var(--line);overflow:hidden;background:#0c0e1e}
+.team{display:flex;gap:10px;padding:11px;margin-bottom:10px;position:relative}
+.team.full{opacity:.55}
+.team.mine{box-shadow:0 4px 0 var(--line), 0 0 0 3px var(--gold)}
+.tname{font-size:16.5px;font-weight:800;letter-spacing:1px}
+.membar{display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:6px}
+.mavatar{display:flex;gap:4px;align-items:center;border:2px solid var(--line);background:#111533;padding:2px 6px 2px 2px}
+.mavatar svg{width:22px;height:22px}
+.mavatar b{font-size:12.5px;font-weight:400}
+.mavatar.leader{background:var(--orange);color:#2a1600;font-weight:800}
+.draggable{cursor:grab}
+.draggable.sel{outline:3px solid var(--cyan);outline-offset:1px}
+.dropok{box-shadow:0 4px 0 var(--line), 0 0 0 3px var(--green)}
+/* ===== 输入 ===== */
+input,select,textarea{width:100%;font-family:inherit;font-size:15px;padding:9px;background:#0a0c1c;color:var(--ink);
+  border:3px solid var(--line);box-shadow:inset 0 3px 0 rgba(0,0,0,.55);outline:none}
 input:focus,select:focus{border-color:var(--cyan)}
-label{font-size:13.5px;color:var(--dim);display:block;margin:8px 0 4px}
-.invite{border:3px solid #000;background:linear-gradient(180deg,#2a1e4a,#1d1636);
-  box-shadow:0 4px 0 rgba(0,0,0,.6);padding:12px;margin-bottom:10px}
-.hr{height:3px;background:#000;opacity:.5;margin:10px 0}
-.icons{display:flex;gap:6px;flex-wrap:wrap}
-.icons button{width:40px;height:40px;font-size:18px;background:#22254a}
-.icons button.on{background:var(--cyan);color:#00212b}
-details{margin-bottom:12px}
-summary{cursor:pointer;font-weight:700;font-size:15px;padding:6px 0}
-.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:99;
-  background:var(--green);color:#00210f;font-weight:800;padding:11px 18px;border:3px solid #000;
-  box-shadow:0 4px 0 rgba(0,0,0,.6);max-width:90%;text-align:center}
-.toast.err{background:var(--red);color:#1b0008}
-.foot{position:fixed;left:0;right:0;bottom:0;padding:10px;background:var(--dark2);border-top:3px solid #000;
-  display:flex;gap:8px;justify-content:center}
-.foot .btn{flex:1;text-align:center}
-.empty{padding:16px;text-align:center;color:var(--dim);border:3px dashed #33385c}
+label{display:block;font-size:13px;color:var(--dim);margin:8px 0 4px}
+/* ===== 关系网 ===== */
+.relmap{width:100%;max-width:100%;height:240px;display:block;background:#0a0c1c;border:3px solid var(--line);box-shadow:inset 0 4px 0 rgba(0,0,0,.5)}
+.relchip{display:inline-flex;align-items:center;gap:6px;border:2px solid var(--line);background:#191d3d;padding:3px 8px 3px 3px;margin:4px 4px 0 0}
+.relchip.a{background:#173a24}.relchip.p{background:#3a2a12}.relchip.f{background:#251a44}
+/* ===== 底部 ===== */
+.foot{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;padding:9px;background:var(--bg2);border-top:3px solid var(--line)}
+.foot .btn{flex:1}
+.toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);z-index:99;background:var(--green);color:#00301a;
+  font-weight:800;padding:10px 16px;border:3px solid var(--line);box-shadow:0 4px 0 var(--line);max-width:92%;text-align:center}
+.toast.err{background:var(--red);color:#2a0006}
+.empty{padding:14px;text-align:center;color:var(--dim);border:3px dashed #2c3160}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media (max-width:520px){ .grid2,.grid3{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="head">
-    <div class="logo">队</div>
-    <div class="grow">
-      <h1>组队大厅</h1>
-      <div class="mut" id="who">加载中…</div>
+
+  <!-- 玩家面板 -->
+  <div class="hud pk">
+    <div id="myAvatar"></div>
+    <div class="plate">
+      <div class="pname" id="myName">加载中…</div>
+      <div class="tagline" id="myTags"></div>
     </div>
-    <button class="btn sm ghost" id="refresh">刷新</button>
+    <button class="sm b-ghost" id="refresh">刷新</button>
   </div>
 
+  <!-- 任务 -->
   <div class="tabs" id="tabs"></div>
 
-  <div id="inbox"></div>
+  <!-- 内容 -->
+  <div id="invites"></div>
   <div id="mine"></div>
-  <div id="hall"></div>
+  <div id="lobby"></div>
 
-  <details id="social">
-    <summary>搭档与黑名单</summary>
-    <div class="px card" id="socialBox"></div>
-  </details>
+  <!-- 关系 -->
+  <div class="pk sec" id="relSec">
+    <h2>关系网</h2>
+    <div id="relBox"></div>
+  </div>
 
-  <details id="adm">
-    <summary>管理员后台（口令）</summary>
-    <div class="px card">
-      <div class="row">
-        <input type="password" id="admpw" placeholder="管理员口令" class="grow">
-        <button class="btn red" id="admgologin">进入</button>
-      </div>
-      <div id="admBox"></div>
+  <!-- 管理 -->
+  <details class="pk sec">
+    <summary style="cursor:pointer;font-weight:800;font-size:15px">管理员后台（口令）</summary>
+    <div class="row" style="margin-top:8px">
+      <input type="password" id="admpw" placeholder="管理员口令" class="grow">
+      <button class="b-red" id="admgologin">进入</button>
     </div>
+    <div id="admBox"></div>
   </details>
 </div>
 
 <div class="foot">
-  <a class="btn ghost" href="index.html">返回入口</a>
-  <button class="btn blue" id="reload2">重新载入</button>
+  <a class="btn b-ghost" href="index.html">返回入口</a>
+  <button class="b-blue" id="reload2">重新载入</button>
 </div>
 
 <script src="config.js"></script>
@@ -128,379 +154,484 @@ const $ = s => document.querySelector(s);
 const CLS = sessionStorage.getItem('cls');
 const CODE = sessionStorage.getItem('code');
 const PWD = sessionStorage.getItem('spwd');
-const SNAME = sessionStorage.getItem('sname') || '';
 if (!CLS || !CODE || !PWD || sessionStorage.getItem('app') !== 'team') location.href = 'student.html';
 
-const ICONS = ['盾', '剑', '星', '火', '雷', '风', '花', '月', '虎', '龙', '鲸', '熊'];
-let ST = null;          // team_state 结果
-let CUR_TASK = null;    // 当前任务 id
-let ADM = null;         // 管理员状态
-let ADMPW = sessionStorage.getItem('admpw') || '';
-let timer = null;
+/* ================= 像素立绘（程序化生成） ================= */
+function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function rngOf(seed) { let x = seed || 1; return function () { x ^= x << 13; x >>>= 0; x ^= x >> 17; x ^= x << 5; x >>>= 0; return x / 4294967296; }; }
+function toSVG(cells, N, bg, px) {
+  let out = '<rect width="100%" height="100%" fill="' + bg + '"/>';
+  cells.forEach(c => { out += '<rect x="' + (c[0] * px) + '" y="' + (c[1] * px) + '" width="' + px + '" height="' + px + '" fill="' + c[2] + '"/>'; });
+  return '<svg width="' + (N * px) + '" height="' + (N * px) + '" viewBox="0 0 ' + (N * px) + ' ' + (N * px) +
+    '" shape-rendering="crispEdges">' + out + '</svg>';
+}
+const PAL = ['#ff4d5e', '#3ddc84', '#3d9bff', '#ffb02e', '#b06bff', '#2fe6e6', '#ffd23f', '#ff8fb1'];
+function crest(name, px) {
+  px = px || 5;
+  const r = rngOf(hash('crest:' + name));
+  const N = 12, half = Math.ceil(N / 2);
+  const c1 = PAL[Math.floor(r() * PAL.length)], c2 = PAL[Math.floor(r() * PAL.length)];
+  const cells = [];
+  for (let y = 0; y < N; y++) for (let x = 0; x < half; x++) if (r() < .45) cells.push([x, y, r() < .5 ? c1 : c2]);
+  const all = cells.slice();
+  cells.forEach(c => { if (c[0] !== N - 1 - c[0]) all.push([N - 1 - c[0], c[1], c[2]]); });
+  return toSVG(all, N, '#0c0e1e', px);
+}
+function avatar(code, px) {
+  px = px || 3;
+  const r = rngOf(hash('av:' + code));
+  const skin = ['#ffd7a8', '#f3c69b', '#e6b083', '#d99a63'][Math.floor(r() * 4)];
+  const hair = ['#2b2d42', '#5c3b1e', '#8b5a2b', '#1b1b1f', '#6b7280'][Math.floor(r() * 5)];
+  const shirt = PAL[Math.floor(r() * PAL.length)];
+  const N = 8, g = [];
+  for (let y = 0; y < N; y++) { g.push([]); for (let x = 0; x < N; x++) g[y].push(null); }
+  const set = (x, y, c) => { if (x >= 0 && x < N && y >= 0 && y < N) g[y][x] = c; };
+  for (let x = 1; x < 7; x++) { set(x, 0, hair); set(x, 1, hair); }
+  set(0, 1, hair); set(7, 1, hair);
+  for (let y = 2; y < 6; y++) for (let x = 1; x < 7; x++) set(x, y, skin);
+  const ey = r() < .5 ? 3 : 4;
+  set(2, ey, '#0b0b12'); set(5, ey, '#0b0b12');
+  set(3, 5, '#a83b3b'); set(4, 5, '#a83b3b');
+  for (let x = 1; x < 7; x++) { set(x, 6, shirt); set(x, 7, shirt); }
+  const cells = [];
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (g[y][x]) cells.push([x, y, g[y][x]]);
+  return toSVG(cells, N, '#0c0e1e', px);
+}
+function slots(n, cap) {
+  let s = '';
+  for (let i = 0; i < cap; i++) s += '<span class="slotdot' + (i < n ? ' on' : '') + '"></span>';
+  return s;
+}
 
-function toast(msg, err) {
+/* ================= 状态 ================= */
+let ST = null, CUR = null, ADM = null, ADMPW = sessionStorage.getItem('admpw') || '', selCode = null;
+
+function toast(m, err) {
   const d = document.createElement('div');
-  d.className = 'toast' + (err ? ' err' : '');
-  d.textContent = msg;
-  document.body.appendChild(d);
-  setTimeout(() => d.remove(), 2200);
+  d.className = 'toast' + (err ? ' err' : ''); d.textContent = m;
+  document.body.appendChild(d); setTimeout(() => d.remove(), 2200);
 }
-function esc2(s) { return esc(String(s == null ? '' : s)); }
-
-async function call(fn, body) {
-  const j = await rpc(fn, body);
-  if (!j || typeof j !== 'object') return { ok: false, msg: '网络异常' };
-  return j;
-}
+function call(fn, body) { return rpc(fn, body).then(j => (j && typeof j === 'object') ? j : { ok: false, msg: '网络异常' }); }
 function me() { return { p_cls: CLS, p_code: CODE, p_pwd: PWD }; }
-function payload(o) { return Object.assign({}, me(), o); }
+function P(o) { return Object.assign({}, me(), o); }
+function gOf(t) { return (ST.my_groups || []).find(x => x.task_id === t); }
+function teamsOf(t) { return (ST.teams || []).filter(x => x.task_id === t); }
+function unOf(t) { return (ST.ungrouped || []).filter(x => x.task_id === t); }
+function nameOf(code) { const c = (ST.classmates || []).find(x => x.code === code); return c ? c.name : code; }
+function canCreate(t) { return (ST.leader_tasks || []).indexOf(t) >= 0; }
 
-/* ---------------- 载入状态 ---------------- */
-async function load(keepScroll) {
+async function load(keep) {
   const y = window.scrollY;
   const j = await call('team_state', me());
   if (!j.ok) {
-    $('#hall').innerHTML = '<div class="px card"><div class="mut">' + esc2(j.msg || '读取失败') +
-      '<br>如果是提示函数不存在，请先在 Supabase 里运行《组队系统补丁.sql》。</div></div>';
+    $('#lobby').innerHTML = '<div class="pk sec"><div class="mut">' + esc(j.msg || '读取失败') +
+      '<br>若提示函数不存在，请先在 Supabase 运行《组队系统补丁.sql》与《组队系统补丁2.sql》。</div></div>';
     return;
   }
   ST = j;
-  if (!CUR_TASK && ST.tasks.length) CUR_TASK = ST.tasks[0].id;
+  if (!CUR && ST.tasks.length) CUR = ST.tasks[0].id;
   render();
-  if (keepScroll) window.scrollTo(0, y);
+  if (keep) window.scrollTo(0, y);
   if (ADMPW) loadAdmin(true);
 }
 
-function inGroup(taskId) { return (ST.my_groups || []).find(g => g.task_id === taskId); }
-function isLeaderAnywhere() { return !!ST.is_leader; }
-function isLeaderOf(taskId) {
-  const g = inGroup(taskId);
-  return !!(g && g.role === 'leader');
-}
-function ungroupedOf(taskId) { return (ST.ungrouped || []).filter(u => u.task_id === taskId); }
-function teamsOf(taskId) { return (ST.teams || []).filter(t => t.task_id === taskId); }
-
 function render() {
-  const meRow = ST.me;
-  $('#who').innerHTML = '<b>' + esc2(meRow.name) + '</b>（' + esc2(meRow.code) + '） ' +
-    (isLeaderAnywhere() ? '<span class="badge leader">组长</span>' : '<span class="badge none">队员</span>');
+  $('#myAvatar').innerHTML = avatar(ST.me.code, 6);
+  $('#myName').textContent = ST.me.name;
+  const joined = (ST.my_groups || []).length;
+  const isLead = (ST.leader_tasks || []).length > 0;
+  $('#myTags').innerHTML =
+    '<span class="tag lv">学号 ' + esc(ST.me.code) + '</span>' +
+    (isLead ? '<span class="tag leader">组长</span>' : '<span class="tag">队员</span>') +
+    '<span class="tag">已入组 ' + joined + '/' + (ST.tasks || []).length + '</span>';
 
-  // 任务标签
-  $('#tabs').innerHTML = ST.tasks.map(t => {
-    const g = inGroup(t.id);
-    const done = t.status === 'done';
-    return '<button class="tab' + (t.id === CUR_TASK ? ' on' : '') + '" data-task="' + t.id + '">' +
-      esc2(t.title) + (g ? ' ✓' : '') + (done ? '（已结束）' : '') + '</button>';
+  $('#tabs').innerHTML = (ST.tasks || []).map(t => {
+    const g = gOf(t.id);
+    return '<button class="tab' + (t.id === CUR ? ' on' : '') + '" data-t="' + esc(t.id) + '">' +
+      esc(t.title) + (g ? ' ✓' : '') + (t.status === 'done' ? '（已结束）' : '') + '</button>';
   }).join('');
-  document.querySelectorAll('.tab').forEach(b => b.onclick = () => { CUR_TASK = b.dataset.task; render(); });
+  document.querySelectorAll('.tab').forEach(b => b.onclick = () => { CUR = b.dataset.t; render(); });
 
-  renderInbox();
-  renderMine();
-  renderHall();
-  renderSocial();
+  renderInvites(); renderMine(); renderLobby(); renderRel();
 }
 
-function renderInbox() {
+/* ---------- 邀请 ---------- */
+function renderInvites() {
   const list = ST.invites || [];
-  if (!list.length) { $('#inbox').innerHTML = ''; return; }
-  $('#inbox').innerHTML = list.map(v => (
-    '<div class="invite">' +
-    '<div class="row"><div class="icon">' + esc2(v.icon || '盾') + '</div><div class="grow">' +
-    '<b>' + esc2(v.team_name) + '</b> <span class="mut">邀请你加入</span>' +
-    '<div class="mut">来自 ' + esc2(v.from_name) + (v.slogan ? ' · 口号：' + esc2(v.slogan) : '') + '</div></div></div>' +
+  if (!list.length) { $('#invites').innerHTML = ''; return; }
+  $('#invites').innerHTML = list.map(v =>
+    '<div class="pk mail"><span class="new">NEW!</span>' +
+    '<div class="row"><div class="crest" style="width:44px;height:44px">' + crest(v.team_name, 3.7) + '</div>' +
+    '<div class="grow"><div class="tname">' + esc(v.team_name) + ' 邀请你加入</div>' +
+    '<div class="mut">来自 ' + esc(v.from_name) + (v.slogan ? ' · ' + esc(v.slogan) : '') + '</div></div></div>' +
     '<div class="row" style="margin-top:9px">' +
-    '<button class="btn green" data-acc="' + v.id + '">同意加入</button>' +
-    '<button class="btn ghost" data-rej="' + v.id + '">拒绝</button>' +
-    '<button class="btn red" data-blk="' + v.from_code + '">拉黑他</button>' +
-    '</div></div>'
-  )).join('');
-  document.querySelectorAll('[data-acc]').forEach(b => b.onclick = async () => {
-    const j = await call('team_respond', payload({ p_invite: b.dataset.acc, p_accept: true }));
-    toast(j.msg || '', !j.ok); load(true);
-  });
-  document.querySelectorAll('[data-rej]').forEach(b => b.onclick = async () => {
-    const j = await call('team_respond', payload({ p_invite: b.dataset.rej, p_accept: false }));
-    toast(j.msg || '', !j.ok); load(true);
-  });
-  document.querySelectorAll('[data-blk]').forEach(b => b.onclick = async () => {
-    if (!confirm('拉黑后对方不能再邀请你，确定吗？')) return;
-    const j = await call('team_block', payload({ p_target: b.dataset.blk, p_block: true }));
-    toast(j.msg || '', !j.ok); load(true);
+    '<button class="b-green grow" data-acc="' + esc(v.id) + '">同意加入</button>' +
+    '<button class="b-ghost" data-rej="' + esc(v.id) + '">拒绝</button>' +
+    '<button class="b-red" data-blk="' + esc(v.from_code) + '">拉黑</button>' +
+    '</div></div>').join('');
+  wire('[data-acc]', b => call('team_respond', P({ p_invite: b.dataset.acc, p_accept: true })));
+  wire('[data-rej]', b => call('team_respond', P({ p_invite: b.dataset.rej, p_accept: false })));
+  wire('[data-blk]', b => confirm('拉黑后对方不能再邀请你，确定吗？')
+    ? call('team_block', P({ p_target: b.dataset.blk, p_block: true })) : null);
+}
+function wire(sel, fn) {
+  document.querySelectorAll(sel).forEach(b => b.onclick = async () => {
+    const r = await fn(b);
+    if (r === null) return;
+    toast(r.msg || '', !r.ok); load(true);
   });
 }
 
+/* ---------- 我的队伍 ---------- */
 function renderMine() {
-  const t = ST.tasks.find(x => x.id === CUR_TASK);
-  if (!t) { $('#mine').innerHTML = '<div class="empty">没有分组任务</div>'; return; }
-  const g = inGroup(CUR_TASK);
-  const team = g ? teamsOf(CUR_TASK).find(x => x.id === g.team_id) : null;
-  let html = '';
-
+  const t = ST.tasks.find(x => x.id === CUR);
+  if (!t) { $('#mine').innerHTML = ''; return; }
+  const g = gOf(CUR), team = g ? teamsOf(CUR).find(x => x.id === g.team_id) : null;
+  let h = '';
   if (team) {
-    const leader = (team.members || []).find(m => m.role === 'leader');
-    html += '<div class="px card"><h2>我的小组 · ' + esc2(team.name) + '</h2>' +
-      '<div class="mut">' + (team.slogan ? '口号：' + esc2(team.slogan) + ' · ' : '') +
-      '组长：' + esc2(leader ? leader.name : '—') + ' · 人数 ' + team.member_count + '/' + team.capacity + '</div>' +
-      '<div style="margin-top:8px">' + (team.members || []).map(m =>
-        '<span class="mem' + (m.role === 'leader' ? ' leader' : '') + '">' + esc2(m.name) +
-        (m.role === 'leader' ? ' 组长' : '') + '</span>').join('') + '</div>';
+    const lead = (team.members || []).find(m => m.role === 'leader');
+    h += '<div class="pk sec"><h2>我的队伍 · ' + esc(team.name) + '</h2>' +
+      '<div class="row"><div class="crest">' + crest(team.name, 5) + '</div><div class="grow">' +
+      '<div class="mut">' + (team.slogan ? esc(team.slogan) + '<br>' : '') +
+      '组长：' + esc(lead ? lead.name : '—') + '</div>' +
+      '<div style="margin-top:6px">' + slots(team.member_count, team.capacity) +
+      ' <span class="mut">' + team.member_count + '/' + team.capacity + '</span></div></div></div>' +
+      '<div class="membar">' + (team.members || []).map(m =>
+        '<span class="mavatar' + (m.role === 'leader' ? ' leader' : '') + '">' + avatar(m.code, 3) + '<b>' + esc(m.name) + '</b></span>').join('') + '</div>';
     if (g.role === 'leader') {
       const rest = team.capacity - team.member_count;
-      html += '<div class="hr"></div><div class="mut">本组还差 ' + rest + ' 人，去下面的"未分组名单"点邀请。</div>';
-      if (team.member_count > 1) {
-        html += '<label>申请踢出（需管理员批准）</label><div class="row">' +
-          '<select id="kickSel" class="grow">' + (team.members || []).filter(m => m.role !== 'leader')
-            .map(m => '<option value="' + m.code + '">' + esc2(m.name) + '</option>').join('') + '</select>' +
-          '<button class="btn red sm" id="kickBtn">提交申请</button></div>';
+      h += '<div class="mut" style="margin-top:8px">' + (rest > 0 ? '还差 ' + rest + ' 人：到下面「未分组」点邀请。' : '本组已满员。') + '</div>';
+      const others = (team.members || []).filter(m => m.role !== 'leader');
+      if (others.length) {
+        h += '<label>申请踢出（需管理员批准）</label><div class="row">' +
+          '<select id="kickSel" class="grow">' + others.map(m => '<option value="' + esc(m.code) + '">' + esc(m.name) + '</option>').join('') + '</select>' +
+          '<button class="b-red sm" id="kickBtn">提交</button></div>';
       }
     } else {
-      html += '<div class="hr"></div><button class="btn ghost block" id="leaveBtn">申请退组（需组长同意）</button>';
+      h += '<div style="margin-top:10px"><button class="b-ghost block" id="leaveBtn">申请退组（组长批）</button></div>';
     }
-    html += '</div>';
+    h += '</div>';
   } else {
-    // 不在组里：已批准 → 建组；未批准 → 申请当组长
-    const canCreate = (ST.leader_tasks || []).indexOf(CUR_TASK) >= 0;
-    const pending = (ST.my_requests || []).some(r => r.kind === 'leader_apply' && r.task_id === CUR_TASK && r.status === 'pending');
-    html += '<div class="px card"><h2>' + esc2(t.title) + '</h2>' +
-      '<div class="mut">你还没有小组。' + (canCreate ? '你已是本任务认可的组长，可以建组招人。'
-        : '可以申请当组长，批准后自己建组招人。') + '</div>';
-    if (canCreate) {
-      html += '<div class="hr"></div><label>小组名称</label><input type="text" id="tName" placeholder="例如：第七组 / 夜行者">' +
-        '<label>口号（选填）</label><input type="text" id="tSlogan" placeholder="例如：不卷不躺，稳过期末">' +
-        '<label>选个图标</label><div class="icons" id="iconPick">' +
-        ICONS.map((ic, i) => '<button data-ic="' + ic + '"' + (i === 0 ? ' class="on"' : '') + '>' + ic + '</button>').join('') +
-        '</div><div style="margin-top:10px"><button class="btn green block" id="createBtn">建组</button></div>';
-    } else if (pending) {
-      html += '<div class="mut" style="margin-top:8px">已提交组长申请，等待管理员审批。</div>';
+    const pend = (ST.my_requests || []).some(r => r.kind === 'leader_apply' && r.task_id === CUR && r.status === 'pending');
+    h += '<div class="pk sec"><h2>' + esc(t.title) + '</h2>' +
+      '<div class="mut">你还没队伍。' + (canCreate(CUR) ? '你是本任务认可的组长，直接建队招人吧。' : '先申请当组长，管理员批准后就能建队。') + '</div>';
+    if (canCreate(CUR)) {
+      h += '<label>队伍名称</label><input id="tName" placeholder="例如：第七组 / 夜行者">' +
+        '<label>口号（选填）</label><input id="tSlogan" placeholder="例如：不卷不躺，稳过期末">' +
+        '<div class="mut" style="margin-top:8px">纹章由队名自动生成，改个名字就是另一个花纹。</div>' +
+        '<div class="row" style="margin-top:8px"><div class="crest" id="crestPreview"></div>' +
+        '<div class="grow mut">输入队名即可预览</div></div>' +
+        '<button class="b-green block" id="createBtn" style="margin-top:10px">创建队伍</button>';
+    } else if (pend) {
+      h += '<div class="mut" style="margin-top:8px">已提交组长申请，等待管理员审批。</div>';
     } else {
-      html += '<div style="margin-top:10px"><button class="btn orange block" id="applyBtn">申请当组长</button></div>';
+      h += '<button class="b-orange block" id="applyBtn" style="margin-top:10px">申请当组长</button>';
     }
-    html += '</div>';
+    h += '</div>';
   }
-  $('#mine').innerHTML = html;
+  $('#mine').innerHTML = h;
 
-  // 事件
-  const leaveBtn = $('#leaveBtn');
-  if (leaveBtn) leaveBtn.onclick = async () => {
+  const lv = $('#leaveBtn');
+  if (lv) lv.onclick = async () => {
     if (!confirm('确定申请退组？需要组长同意。')) return;
-    const j = await call('team_request', payload({ p_kind: 'leave', p_task: CUR_TASK, p_target: null, p_note: '' }));
-    toast(j.msg || '', !j.ok); load(true);
+    const r = await call('team_request', P({ p_kind: 'leave', p_task: CUR, p_target: null, p_note: '' }));
+    toast(r.msg || '', !r.ok); load(true);
   };
-  const kickBtn = $('#kickBtn');
-  if (kickBtn) kickBtn.onclick = async () => {
-    const code = $('#kickSel').value;
-    if (!confirm('确定申请把该成员踢出？需管理员批准。')) return;
-    const j = await call('team_request', payload({ p_kind: 'kick', p_task: CUR_TASK, p_target: code, p_note: '' }));
-    toast(j.msg || '', !j.ok); load(true);
+  const kb = $('#kickBtn');
+  if (kb) kb.onclick = async () => {
+    if (!confirm('确定申请踢出该成员？需管理员批准。')) return;
+    const r = await call('team_request', P({ p_kind: 'kick', p_task: CUR, p_target: $('#kickSel').value, p_note: '' }));
+    toast(r.msg || '', !r.ok); load(true);
   };
-  const applyBtn = $('#applyBtn');
-  if (applyBtn) applyBtn.onclick = async () => {
-    const j = await call('team_apply_leader', payload({ p_task: CUR_TASK, p_note: '' }));
-    toast(j.msg || '', !j.ok); load(true);
+  const ab = $('#applyBtn');
+  if (ab) ab.onclick = async () => {
+    const r = await call('team_apply_leader', P({ p_task: CUR, p_note: '' }));
+    toast(r.msg || '', !r.ok); load(true);
   };
-  const createBtn = $('#createBtn');
-  if (createBtn) createBtn.onclick = async () => {
-    let icon = '盾';
-    const on = document.querySelector('#iconPick button.on');
-    if (on) icon = on.dataset.ic;
-    const name = $('#tName').value.trim();
-    if (!name) { toast('请填写小组名称', true); return; }
-    const j = await call('team_create', payload({
-      p_task: CUR_TASK, p_name: name, p_slogan: $('#tSlogan').value.trim(), p_icon: icon }));
-    toast(j.msg || '', !j.ok); load(true);
+  const cb = $('#createBtn');
+  if (cb) cb.onclick = async () => {
+    const nm = $('#tName').value.trim();
+    if (!nm) { toast('请输入队伍名称', true); return; }
+    const r = await call('team_create', P({ p_task: CUR, p_name: nm, p_slogan: $('#tSlogan').value.trim(), p_icon: '盾' }));
+    toast(r.msg || '', !r.ok); load(true);
   };
-  document.querySelectorAll('#iconPick button').forEach(b => b.onclick = () => {
-    document.querySelectorAll('#iconPick button').forEach(x => x.classList.remove('on'));
-    b.classList.add('on');
-  });
+  const tn = $('#tName'), cp = $('#crestPreview');
+  if (tn && cp) {
+    const up = () => { cp.innerHTML = crest(tn.value.trim() || '新队伍', 5); };
+    tn.oninput = up; up();
+  }
 }
 
-function renderHall() {
-  const t = ST.tasks.find(x => x.id === CUR_TASK);
-  const teams = teamsOf(CUR_TASK);
-  const leader = isLeaderOf(CUR_TASK);
-  let html = '<div class="px card"><h2>大厅 · ' + esc2(t ? t.title : '') + '</h2>' +
-    '<div class="mut">' + (t ? '每组 ' + t.size + ' 人' + (t.size_note ? '（' + esc2(t.size_note) + '）' : '') : '') +
-    ' · 已有 ' + teams.length + ' 组 · 还差 ' +
-    (t ? Math.max(0, (t.total || 0) - (t.joined || 0)) : 0) + ' 人未入组</div>';
-
-  if (!teams.length) html += '<div class="empty" style="margin-top:10px">还没有小组，等组长建组</div>';
-  else html += '<div style="margin-top:10px">' + teams.map(g => {
+/* ---------- 大厅 ---------- */
+function renderLobby() {
+  const t = ST.tasks.find(x => x.id === CUR);
+  const teams = teamsOf(CUR);
+  const leader = gOf(CUR) && gOf(CUR).role === 'leader';
+  let h = '<div class="pk sec"><h2>大厅 · ' + esc(t ? t.title : '') + '</h2>' +
+    '<div class="mut">' + (t ? '容量 ' + t.size + ' 人' + (t.size_note ? '（' + esc(t.size_note) + '）' : '') : '') +
+    ' · 队伍 ' + teams.length + ' 支 · 未入组 ' + unOf(CUR).length + ' 人' +
+    (t && t.deadline ? ' · 截止 ' + esc(String(t.deadline).slice(0, 16).replace('T', ' ')) : '') + '</div>';
+  if (!teams.length) h += '<div class="empty" style="margin-top:10px">还没有队伍，等组长开团</div>';
+  else h += teams.map(g => {
     const full = g.member_count >= g.capacity;
-    if (CUR_TASK !== g.task_id) return '';
-    return '<div class="px team' + (full ? ' full' : '') + '">' +
-      '<div class="icon">' + esc2(g.icon || '盾') + '</div>' +
-      '<div class="grow"><b>' + esc2(g.name) + '</b> ' + (full ? '<span class="badge none">已满</span>' : '') +
-      '<div class="mut">组长 ' + esc2(g.leader_name || '—') + ' · ' + g.member_count + '/' + g.capacity +
-      (g.slogan ? ' · ' + esc2(g.slogan) : '') + '</div>' +
-      '<div style="margin-top:4px">' + (g.members || []).map(m =>
-        '<span class="mem' + (m.role === 'leader' ? ' leader' : '') + '">' + esc2(m.name) + '</span>').join('') +
+    const mine = gOf(CUR) && gOf(CUR).team_id === g.id;
+    return '<div class="pk team' + (full ? ' full' : '') + (mine ? ' mine' : '') + '" data-team="' + esc(g.id) + '">' +
+      '<div class="crest">' + crest(g.name, 5) + '</div>' +
+      '<div class="grow"><div class="tname">' + esc(g.name) + (mine ? ' ★' : '') + '</div>' +
+      '<div class="mut">组长 ' + esc(g.leader_name || '—') + (g.slogan ? ' · ' + esc(g.slogan) : '') + '</div>' +
+      '<div style="margin-top:5px">' + slots(g.member_count, g.capacity) + '</div>' +
+      '<div class="membar">' + (g.members || []).map(m =>
+        '<span class="mavatar' + (m.role === 'leader' ? ' leader' : '') + '">' + avatar(m.code, 2.6) + '<b>' + esc(m.name) + '</b></span>').join('') +
       '</div></div></div>';
-  }).join('') + '</div>';
-  html += '</div>';
+  }).join('');
+  h += '</div>';
 
-  // 未分组名单（仅组长可见）
   if (leader) {
-    const un = ungroupedOf(CUR_TASK).filter(u => u.code !== CODE);
-    html += '<div class="px card"><h2>未分组名单（只有组长能看到）</h2>' +
+    const un = unOf(CUR).filter(u => u.code !== CODE);
+    h += '<div class="pk sec"><h2>未分组（组长可见）</h2>' +
       (un.length ? '<div class="row">' + un.map(u =>
-        '<button class="btn blue sm" data-inv="' + u.code + '">邀请 ' + esc2(u.name) + '</button>').join('') + '</div>'
-        : '<div class="mut">这个任务的人都已入组</div>') + '</div>';
+        '<button class="b-blue sm" data-inv="' + esc(u.code) + '">邀请 ' + esc(u.name) + '</button>').join('') + '</div>'
+        : '<div class="mut">这个任务所有人都已入组</div>') + '</div>';
   }
-  $('#hall').innerHTML = html;
-  document.querySelectorAll('[data-inv]').forEach(b => b.onclick = async () => {
-    const j = await call('team_invite', payload({ p_task: CUR_TASK, p_to: b.dataset.inv }));
-    toast(j.msg || '', !j.ok); load(true);
-  });
+  $('#lobby').innerHTML = h;
+  wire('[data-inv]', b => call('team_invite', P({ p_task: CUR, p_to: b.dataset.inv })));
 }
 
-function renderSocial() {
-  const b = ST.binding;
-  const blocks = ST.blocks || [];
-  let html = '<h2>搭档绑定</h2>';
-  if (!b) {
-    html += '<div class="mut">还没有搭档。输入对方学号发出绑定邀请，对方同意后生效（与分组无关，长期有效）。</div>' +
-      '<div class="row" style="margin-top:8px"><input type="text" id="bindCode" placeholder="对方学号" class="grow">' +
-      '<button class="btn purple" id="bindBtn">发出邀请</button></div>';
-  } else if (b.status === 'pending') {
-    const mineReq = b.requested_by === CODE;
-    html += '<div class="mut">与 <b>' + esc2(b.other_name) + '</b> 的绑定邀请：' +
-      (mineReq ? '等待对方确认' : '对方邀请你绑定') + '</div>';
-    if (!mineReq) {
-      html += '<div class="row" style="margin-top:8px"><button class="btn green" id="bindAcc">同意</button>' +
-        '<button class="btn ghost" id="bindRej">拒绝</button></div>';
-    }
-  } else {
-    html += '<div class="mut">搭档：<b>' + esc2(b.other_name) + '</b>（已绑定）</div>';
-  }
-  html += '<div class="hr"></div><h2>黑名单</h2>' +
-    (blocks.length ? '<div class="row">' + blocks.map(x =>
-      '<button class="btn ghost sm" data-unblk="' + x.code + '">解除 ' + esc2(x.name) + '</button>').join('') + '</div>'
-      : '<div class="mut">还没有拉黑任何人</div>');
-  $('#socialBox').innerHTML = html;
+/* ---------- 关系网 ---------- */
+function renderRel() {
+  const rels = ST.relations || [];
+  const act = rels.filter(r => r.status === 'active');
+  const pend = rels.filter(r => r.status === 'pending');
+  let h = '<div class="mut">关系类型：搭档（组队优先放同组）· 好友 · 学习伙伴。双方确认后生效，与分组无关。</div>';
 
-  const bb = $('#bindBtn');
-  if (bb) bb.onclick = async () => {
-    const to = $('#bindCode').value.trim();
-    if (!to) { toast('请输入对方学号', true); return; }
-    const j = await call('binding_request', payload({ p_to: to }));
-    toast(j.msg || '', !j.ok); load(true);
+  // 关系图
+  h += '<canvas class="relmap" id="relmap" width="700" height="320"></canvas>';
+
+  h += '<div style="margin-top:8px">' +
+    (act.length ? act.map(r => '<span class="relchip ' + (r.rtype === '搭档' ? 'a' : r.rtype === '好友' ? 'f' : 'p') + '">' +
+      '<span style="display:inline-block;width:20px;height:20px">' + avatar(r.other_code, 2.5) + '</span>' +
+      '<b>' + esc(r.other_name) + '</b><span class="mut">' + esc(r.rtype) + '</span>' +
+      '<button class="b-ghost sm" data-relend="' + esc(r.id) + '">解除</button></span>').join('')
+      : '<span class="mut">还没有已生效的关系</span>') + '</div>';
+
+  if (pend.length) {
+    h += '<div style="margin-top:10px"><h2>待确认</h2>' + pend.map(r => {
+      const mine = r.mine;
+      return '<div class="pk inset" style="padding:8px;margin-bottom:6px"><div class="row">' +
+        '<span class="grow">' + esc(r.other_name) + ' · 「' + esc(r.rtype) + '」' + (mine ? '（我发出的）' : '（对方邀请）') + '</span>' +
+        (mine ? '<button class="b-ghost sm" data-relend="' + esc(r.id) + '">撤回</button>'
+              : '<button class="b-green sm" data-relok="' + esc(r.id) + '">同意</button>' +
+                '<button class="b-ghost sm" data-relend="' + esc(r.id) + '">拒绝</button>') +
+        '</div></div>';
+    }).join('') + '</div>';
+  }
+
+  h += '<div style="margin-top:12px"><h2>建立关系</h2><div class="row">' +
+    '<select id="relWho" class="grow">' + (ST.classmates || []).filter(c => c.code !== CODE)
+      .map(c => '<option value="' + esc(c.code) + '">' + esc(c.name) + '（' + esc(c.code) + '）</option>').join('') + '</select>' +
+    '<select id="relType" style="max-width:130px"><option>搭档</option><option>好友</option><option>学习伙伴</option></select>' +
+    '<button class="b-purple" id="relBtn">发出邀请</button></div></div>';
+
+  $('#relBox').innerHTML = h;
+  wire('[data-relend]', b => call('relation_end', P({ p_id: b.dataset.relend })));
+  wire('[data-relok]', b => call('relation_respond', P({ p_id: b.dataset.relok, p_accept: true })));
+  const rb = $('#relBtn');
+  if (rb) rb.onclick = async () => {
+    const r = await call('relation_request', P({ p_to: $('#relWho').value, p_type: $('#relType').value }));
+    toast(r.msg || '', !r.ok); load(true);
   };
-  const ba = $('#bindAcc');
-  if (ba) ba.onclick = async () => {
-    const j = await call('binding_respond', payload({ p_id: b.id, p_accept: true }));
-    toast(j.msg || '', !j.ok); load(true);
-  };
-  const br = $('#bindRej');
-  if (br) br.onclick = async () => {
-    const j = await call('binding_respond', payload({ p_id: b.id, p_accept: false }));
-    toast(j.msg || '', !j.ok); load(true);
-  };
-  document.querySelectorAll('[data-unblk]').forEach(x => x.onclick = async () => {
-    const j = await call('team_block', payload({ p_target: x.dataset.unblk, p_block: false }));
-    toast(j.msg || '', !j.ok); load(true);
-  });
+  drawRelMap(rels);
 }
 
-/* ---------------- 管理员 ---------------- */
+function drawRelMap(rels) {
+  const cv = $('#relmap'); if (!cv) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const W = Math.max(240, cv.clientWidth || 320), H = 240;
+  if (cv.width !== W * dpr || cv.height !== H * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
+  const g = cv.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, W, H);
+  g.strokeStyle = 'rgba(255,255,255,.06)'; g.lineWidth = 1;
+  for (let x = 0; x < W; x += 20) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); }
+  for (let y = 0; y < H; y += 20) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+  const cx = W / 2, cy = H / 2;
+  const list = (rels || []).filter(r => r.status === 'active');
+  if (!list.length) {
+    g.fillStyle = '#6d76a8'; g.font = '15px SimSun, sans-serif'; g.textAlign = 'center';
+    g.fillText('还没有关系，先邀请一位同学试试', cx, cy);
+  }
+  const R = Math.min(W / 2 - 34, H / 2 - 42);
+  list.forEach((r, i) => {
+    const a = -Math.PI / 2 + i * (Math.PI * 2 / Math.max(1, list.length));
+    const x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R;
+    g.strokeStyle = r.rtype === '搭档' ? '#3ddc84' : r.rtype === '好友' ? '#b06bff' : '#ffb02e';
+    g.lineWidth = 4; g.beginPath(); g.moveTo(cx, cy); g.lineTo(x, y); g.stroke();
+    g.fillStyle = '#191d3d'; g.fillRect(x - 17, y - 17, 34, 34);
+    g.strokeStyle = '#05060f'; g.lineWidth = 3; g.strokeRect(x - 17, y - 17, 34, 34);
+    g.fillStyle = '#f4f4ff'; g.font = '12px SimSun, sans-serif'; g.textAlign = 'center';
+    g.fillText((r.other_name || '').slice(0, 5), x, y + 30);
+    g.fillStyle = r.rtype === '搭档' ? '#3ddc84' : r.rtype === '好友' ? '#b06bff' : '#ffb02e';
+    g.font = '11px SimSun, sans-serif';
+    g.fillText(r.rtype, x, y - 22);
+  });
+  g.fillStyle = '#ffd23f'; g.fillRect(cx - 18, cy - 18, 36, 36);
+  g.strokeStyle = '#05060f'; g.lineWidth = 3; g.strokeRect(cx - 18, cy - 18, 36, 36);
+  g.fillStyle = '#1b1b1f'; g.font = 'bold 15px SimSun, sans-serif'; g.textAlign = 'center';
+  g.fillText('我', cx, cy + 5);
+}
+window.addEventListener('resize', () => { if (ST) drawRelMap(ST.relations); });
+
+/* ---------- 管理后台 ---------- */
 async function loadAdmin(silent) {
   if (!ADMPW) return;
   const j = await call('team_admin_state', { p_password: ADMPW });
-  if (!j.ok) {
-    if (!silent) { toast(j.msg || '口令错误', true); sessionStorage.removeItem('admpw'); ADMPW = ''; }
-    return;
-  }
-  ADM = j;
-  renderAdmin();
+  if (!j.ok) { if (!silent && ADMPW) { toast(j.msg || '口令错误', true); sessionStorage.removeItem('admpw'); ADMPW = ''; } return; }
+  ADM = j; renderAdmin();
 }
-
 function renderAdmin() {
   if (!ADM) return;
   const reqs = ADM.requests || [];
-  let html = '<div class="hr"></div><h2>待审批（' + reqs.length + '）</h2>';
-  if (!reqs.length) html += '<div class="mut">没有待处理的申请</div>';
-  else html += reqs.map(q => {
-    const kindTxt = q.kind === 'leader_apply' ? '申请当组长' : q.kind === 'kick' ? '申请踢人' : '申请退组';
-    const who = q.kind === 'kick' ? (esc2(q.from_name) + ' 申请踢出 ' + esc2(q.target_name)) : esc2(q.from_name);
-    return '<div class="px card flat" style="margin-bottom:8px"><div class="row">' +
-      '<div class="grow"><b>' + kindTxt + '</b> · ' + esc2(q.task_id || '') + '<div class="mut">' + who + '</div></div>' +
-      '<button class="btn green sm" data-ap="' + q.id + '">批准</button>' +
-      '<button class="btn ghost sm" data-rj="' + q.id + '">驳回</button></div></div>';
-  }).join('');
+  let h = '<div class="row" style="margin-top:10px"><b class="grow">待审批 ' + reqs.length + '</b></div>';
+  h += reqs.length ? reqs.map(q => {
+    const txt = q.kind === 'leader_apply' ? '申请当组长' : q.kind === 'kick' ? '申请踢人' : '申请退组';
+    const who = q.kind === 'kick' ? (esc(q.from_name) + ' → 踢出 ' + esc(q.target_name)) : esc(q.from_name);
+    return '<div class="pk inset" style="padding:8px;margin:6px 0"><div class="row">' +
+      '<span class="grow">' + txt + ' · ' + esc(q.task_id || '') + '<br><span class="mut">' + who + '（' + esc(q.from_code) + '）</span></span>' +
+      '<button class="b-green sm" data-ap="' + esc(q.id) + '">批准</button>' +
+      '<button class="b-ghost sm" data-rj="' + esc(q.id) + '">驳回</button></div></div>';
+  }).join('') : '<div class="mut">没有待处理申请</div>';
+
+  // 任务设置
+  h += '<div style="margin-top:12px"><h2>任务设置</h2>';
+  (ADM.tasks || []).forEach(t => {
+    h += '<div class="pk inset" style="padding:8px;margin-bottom:8px">' +
+      '<b>' + esc(t.title) + '</b> <span class="mut">' + esc(t.id) + '</span>' +
+      '<div class="grid3" style="margin-top:6px">' +
+      '<div><label>每组人数</label><input type="number" min="2" max="12" value="' + t.size + '" data-f="size" data-id="' + esc(t.id) + '"></div>' +
+      '<div><label>备注</label><input value="' + esc(t.size_note || '') + '" data-f="note" data-id="' + esc(t.id) + '"></div>' +
+      '<div><label>状态</label><select data-f="status" data-id="' + esc(t.id) + '">' +
+      ['open', 'closed', 'done'].map(s => '<option value="' + s + '"' + (t.status === s ? ' selected' : '') + '>' + s + '</option>').join('') +
+      '</select></div></div>' +
+      '<label>截止时间（到期后可一键自动分配）</label>' +
+      '<input type="datetime-local" value="' + (t.deadline ? String(t.deadline).slice(0, 16) : '') + '" data-f="deadline" data-id="' + esc(t.id) + '">' +
+      '<div class="row" style="margin-top:8px">' +
+      '<button class="b-blue sm" data-save="' + esc(t.id) + '">保存</button>' +
+      '<button class="b-orange sm" data-auto="' + esc(t.id) + '">自动分配未入组的人</button>' +
+      '</div></div>';
+  });
+  h += '</div>';
 
   // 指派组长
-  html += '<div class="hr"></div><h2>指派组长</h2><div class="row">' +
-    '<select id="aTask" class="grow">' + (ADM.tasks || []).map(t =>
-      '<option value="' + t.id + '">' + esc2(t.title) + '</option>').join('') + '</select>' +
-    '<input type="text" id="aCode" placeholder="学号" style="max-width:130px">' +
-    '<button class="btn orange sm" id="aMake">指派</button></div>';
+  h += '<div style="margin-top:12px"><h2>指派 / 更换组长</h2><div class="row">' +
+    '<select id="aLTask" class="grow">' + (ADM.tasks || []).map(t => '<option value="' + esc(t.id) + '">' + esc(t.title) + '</option>').join('') + '</select>' +
+    '<input id="aCode" placeholder="学号" style="max-width:120px">' +
+    '<button class="b-orange sm" id="aMake">设为组长（无组则先建组）</button></div>' +
+    '<div class="mut" style="margin-top:4px">给已有队伍换组长：点队伍里的"换组长"。</div></div>';
 
-  // 调组
-  html += '<div class="hr"></div><h2>调组（原组留空）</h2>';
+  // 调组（点选 + 拖拽）
+  h += '<div style="margin-top:12px"><h2>调组（原组留空）</h2>' +
+    '<div class="mut">电脑可拖拽成员到目标队伍；手机先点成员（会高亮），再点目标队伍。</div>';
   (ADM.tasks || []).forEach(t => {
     const ts = (ADM.teams || []).filter(x => x.task_id === t.id);
     if (!ts.length) return;
-    html += '<details><summary>' + esc2(t.title) + '（' + ts.length + ' 组）</summary>';
+    h += '<details style="margin-top:6px"><summary style="cursor:pointer">' + esc(t.title) + '（' + ts.length + ' 队）</summary>';
     ts.forEach(g => {
-      html += '<div class="px card flat" style="margin:6px 0"><b>' + esc2(g.name) + '</b>' +
-        '<span class="mut"> ' + (g.members || []).length + '/' + g.capacity + '</span>' +
-        '<div style="margin-top:6px">' + (g.members || []).map(m =>
-          '<span class="mem' + (m.role === 'leader' ? ' leader' : '') + '">' + esc2(m.name) + '</span>').join('') + '</div>' +
+      h += '<div class="pk inset team" data-dropteam="' + esc(g.id) + '" data-task="' + esc(t.id) + '" style="padding:8px;margin:6px 0">' +
+        '<div class="crest" style="width:44px;height:44px">' + crest(g.name, 3.7) + '</div>' +
+        '<div class="grow"><b>' + esc(g.name) + '</b> <span class="mut">' + (g.members || []).length + '/' + g.capacity + '</span>' +
+        '<div class="membar">' + (g.members || []).map(m =>
+          '<span class="mavatar draggable' + (m.role === 'leader' ? ' leader' : '') + '" draggable="true" data-code="' + esc(m.code) + '">' +
+          avatar(m.code, 2.6) + '<b>' + esc(m.name) + '</b></span>').join('') + '</div>' +
         '<div class="row" style="margin-top:6px">' +
-        '<select class="grow" data-mvcode="' + esc2(g.id) + '">' +
-        (g.members || []).map(m => '<option value="' + m.code + '">' + esc2(m.name) + '</option>').join('') +
-        '</select><select style="max-width:150px" data-mvto="' + esc2(g.id) + '">' +
-        ts.filter(x => x.id !== g.id).map(x => '<option value="' + x.id + '">→ ' + esc2(x.name) + '</option>').join('') +
-        '</select><button class="btn blue sm" data-mv="' + esc2(g.id) + '|' + esc2(t.id) + '">移动</button></div></div>';
+        '<select data-newlead="' + esc(g.id) + '" style="max-width:160px">' +
+        (g.members || []).map(m => '<option value="' + esc(m.code) + '">' + esc(m.name) + '</option>').join('') + '</select>' +
+        '<button class="b-purple sm" data-setlead="' + esc(g.id) + '">换组长</button>' +
+        '</div></div></div>';
     });
-    html += '</details>';
+    h += '</details>';
   });
+  h += '</div>';
 
-  // 未分组（全部任务）
   const un = ADM.ungrouped || [];
-  html += '<div class="hr"></div><h2>未分组总览（' + un.length + '）</h2>' +
-    (un.length ? '<div class="mut">' + un.map(u => esc2(u.task_title) + '：' + esc2(u.name)).join('　') + '</div>'
-      : '<div class="mut">所有任务都已分好</div>');
+  h += '<div style="margin-top:12px"><h2>未分组总览（' + un.length + '）</h2>' +
+    (un.length ? '<div class="mut">' + un.map(u => esc(u.task_title) + '：' + esc(u.name)).join('　') + '</div>'
+      : '<div class="mut">所有任务都已分好</div>') + '</div>';
 
-  $('#admBox').innerHTML = html;
+  $('#admBox').innerHTML = h;
 
-  document.querySelectorAll('[data-ap]').forEach(b => b.onclick = async () => {
-    const j = await call('team_admin_decide', { p_password: ADMPW, p_request: b.dataset.ap, p_approve: true });
-    toast(j.msg || '', !j.ok); load(true);
+  wire('[data-ap]', b => call('team_admin_decide', { p_password: ADMPW, p_request: b.dataset.ap, p_approve: true }));
+  wire('[data-rj]', b => call('team_admin_decide', { p_password: ADMPW, p_request: b.dataset.rj, p_approve: false }));
+  wire('[data-save]', async b => {
+    const id = b.dataset.save;
+    const val = f => { const el = document.querySelector('[data-f="' + f + '"][data-id="' + id + '"]'); return el ? el.value : ''; };
+    const t = (ADM.tasks || []).find(x => x.id === id) || {};
+    return call('team_task_upsert', {
+      p_password: ADMPW, p_id: id, p_title: t.title || id,
+      p_size: parseInt(val('size') || t.size || 5, 10), p_size_note: val('note'),
+      p_deadline: val('deadline') ? new Date(val('deadline')).toISOString() : '',
+      p_status: val('status'), p_auto_rule: t.auto_rule || {}
+    });
   });
-  document.querySelectorAll('[data-rj]').forEach(b => b.onclick = async () => {
-    const j = await call('team_admin_decide', { p_password: ADMPW, p_request: b.dataset.rj, p_approve: false });
-    toast(j.msg || '', !j.ok); load(true);
+  wire('[data-auto]', b => {
+    if (!confirm('把这个任务里所有未入组的人随机分配（尊重搭档关系、优先已有组长）？')) return null;
+    return call('team_autofill', { p_password: ADMPW, p_task: b.dataset.auto });
   });
   const mk = $('#aMake');
   if (mk) mk.onclick = async () => {
-    const j = await call('team_admin_make_leader', {
-      p_password: ADMPW, p_task: $('#aTask').value, p_code: $('#aCode').value.trim() });
-    toast(j.msg || '', !j.ok); load(true);
+    const code = $('#aCode').value.trim();
+    if (!code) { toast('请输入学号', true); return; }
+    const r = await call('team_admin_make_leader', { p_password: ADMPW, p_task: $('#aLTask').value, p_code: code });
+    toast(r.msg || '', !r.ok); load(true);
   };
-  document.querySelectorAll('[data-mv]').forEach(b => b.onclick = async () => {
-    const [fromTeam, task] = b.dataset.mv.split('|');
-    const code = document.querySelector('[data-mvcode="' + fromTeam + '"]').value;
-    const to = document.querySelector('[data-mvto="' + fromTeam + '"]').value;
-    if (!to) { toast('没有可调入的小组', true); return; }
-    const j = await call('team_admin_move', { p_password: ADMPW, p_task: task, p_code: code, p_team: to });
-    toast(j.msg || '', !j.ok); load(true);
+  wire('[data-setlead]', b => {
+    const code = document.querySelector('[data-newlead="' + b.dataset.setlead + '"]').value;
+    return call('team_admin_set_leader', { p_password: ADMPW, p_team: b.dataset.setlead, p_code: code });
   });
+
+  // 拖拽 / 点选调组
+  let dragCode = null;
+  document.querySelectorAll('.draggable').forEach(el => {
+    el.addEventListener('dragstart', e => { dragCode = el.dataset.code; e.dataTransfer.setData('text/plain', dragCode); });
+    el.onclick = () => {
+      document.querySelectorAll('.draggable').forEach(x => x.classList.remove('sel'));
+      if (selCode === el.dataset.code) { selCode = null; toast('已取消选择'); return; }
+      selCode = el.dataset.code; el.classList.add('sel');
+      toast('已选中 ' + nameOf(selCode) + '，再点目标队伍');
+    };
+  });
+  document.querySelectorAll('[data-dropteam]').forEach(z => {
+    z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('dropok'); });
+    z.addEventListener('dragleave', () => z.classList.remove('dropok'));
+    z.addEventListener('drop', async e => {
+      e.preventDefault(); z.classList.remove('dropok');
+      const code = dragCode || e.dataTransfer.getData('text/plain');
+      await moveTo(code, z.dataset.dropteam, z.dataset.task);
+    });
+    z.onclick = async e => {
+      if (!selCode || e.target.closest('.draggable') || e.target.closest('button') || e.target.closest('select')) return;
+      await moveTo(selCode, z.dataset.dropteam, z.dataset.task);
+    };
+  });
+  async function moveTo(code, team, task) {
+    if (!code) { toast('先选一个成员', true); return; }
+    const r = await call('team_admin_move', { p_password: ADMPW, p_task: task, p_code: code, p_team: team });
+    toast(r.msg || '', !r.ok);
+    selCode = null; load(true);
+  }
 }
 
-/* ---------------- 事件绑定 ---------------- */
+/* ---------- 事件 ---------- */
 $('#refresh').onclick = () => load(true);
 $('#reload2').onclick = () => load(true);
 $('#admgologin').onclick = () => {
   ADMPW = $('#admpw').value.trim();
   if (!ADMPW) { toast('请输入管理员口令', true); return; }
-  sessionStorage.setItem('admpw', ADMPW);
-  loadAdmin(false);
+  sessionStorage.setItem('admpw', ADMPW); loadAdmin(false);
 };
 if (ADMPW) $('#admpw').value = ADMPW;
 
 load();
-timer = setInterval(() => load(true), 5000);   // 每 5 秒自动刷新大厅
+setInterval(() => load(true), 5000);
 </script>
 </body>
 </html>
