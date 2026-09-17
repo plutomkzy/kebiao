@@ -48,7 +48,10 @@ async function init() {
     if (!j.ok) { $('#msg').textContent = j.msg || '验证失败，请重试'; return; }
     if (j.role !== 'student') { $('#msg').textContent = '该密钥不是学生班级码，请从对应入口进入'; return; }
     sessionStorage.setItem('cls', j.cls);
-    $('#t2').textContent = cfgOf(j.cls).name + ' · 学生入口';
+    // app: 'score' 打分系统 / 'team' 组队系统（隐藏入口）
+    const app = j.app || 'score';
+    sessionStorage.setItem('app', app);
+    $('#t2').textContent = (app === 'team' ? '组队' : cfgOf(j.cls).name) + ' · 学生入口';
     $('#step1').style.display = 'none';
     $('#step2').style.display = 'block';
   };
@@ -62,7 +65,7 @@ async function init() {
     sessionStorage.setItem('code', j.code);
     sessionStorage.setItem('spwd', spwd);
     sessionStorage.setItem('sname', j.name || '');
-    location.href = 'vote.html';
+    location.href = (sessionStorage.getItem('app') === 'team') ? 'team.html' : 'vote.html';
   };
   $('#code').onkeydown = e => { if (e.key === 'Enter') $('#go2').click(); };
 }
