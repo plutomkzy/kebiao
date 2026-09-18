@@ -606,14 +606,14 @@ function renderMine() {
       h += '<div class="mut" style="margin-top:8px">' + (rest > 0 ? '还差 ' + rest + ' 人：到下面「未分组」点邀请。' : '本组已满员。') + '</div>';
       const others = (team.members || []).filter(m => m.role !== 'leader');
       if (others.length) {
-        h += '<label>申请踢出（需管理员批准）</label><div class="row">' +
+        h += '<label>踢出队员（直接生效）</label><div class="row">' +
           '<select id="kickSel" class="grow">' + others.map(m => '<option value="' + esc(m.code) + '">' + esc(m.name) + '</option>').join('') + '</select>' +
-          '<button class="b-red sm" id="kickBtn">提交</button></div>';
+          '<button class="b-red sm" id="kickBtn">踢出</button></div>';
       }
       h += '<div style="margin-top:10px"><button class="b-ghost block" id="stepDown">退出队长身份（我仍是队员）</button></div>' +
         '<div class="mut" style="margin-top:4px">退出后本队暂时没有队长，管理员可以指派别人，队员也能自己申请。</div>';
     } else {
-      h += '<div style="margin-top:10px"><button class="b-ghost block" id="leaveBtn">申请退组（组长批）</button></div>';
+      h += '<div style="margin-top:10px"><button class="b-ghost block" id="leaveBtn">退出队伍（直接生效）</button></div>';
       const noLead = (team.leader_code === '');
       const asked = (ST.my_requests || []).some(r => r.kind === 'take_leader' && r.team_id === team.id && r.status === 'pending');
       if (noLead) {
@@ -647,13 +647,13 @@ function renderMine() {
 
   const lv = $('#leaveBtn');
   if (lv) lv.onclick = async () => {
-    if (!confirm('确定申请退组？需要组长同意。')) return;
+    if (!confirm('确定退出这个队伍？退出后会变回未分组。')) return;
     const r = await call('team_request', P({ p_kind: 'leave', p_task: CUR, p_target: null, p_note: '' }));
     toast(r.msg || '', !r.ok); refreshNow();
   };
   const kb = $('#kickBtn');
   if (kb) kb.onclick = async () => {
-    if (!confirm('确定申请踢出该成员？需管理员批准。')) return;
+    if (!confirm('确定把这个成员踢出队伍？他会变回未分组。')) return;
     const r = await call('team_request', P({ p_kind: 'kick', p_task: CUR, p_target: $('#kickSel').value, p_note: '' }));
     toast(r.msg || '', !r.ok); refreshNow();
   };
@@ -721,13 +721,13 @@ function renderLobby() {
     (t && t.deadline ? ' · 截止 ' + esc(String(t.deadline).slice(0, 16).replace('T', ' ')) : '') + '</div>';
 
   // ① 未分组的人排在最前面，直接邀请
-  h += '<div class="hr"></div><h2>还没组队的人（先从这里挑）</h2>';
+  h += '<div class="hr"></div><h2>还没组队的人（点一下就进你的队）</h2>';
   if (un.length) {
     h += '<div class="row">' + un.map(u =>
-      '<button class="b-blue sm" data-inv="' + esc(u.code) + '">邀请 ' + esc(u.name) + '</button>').join('') + '</div>' +
+      '<button class="b-blue sm" data-inv="' + esc(u.code) + '">＋ ' + esc(u.name) + '</button>').join('') + '</div>' +
       '<div class="row" style="margin-top:8px">' +
       '<button class="b-ghost sm" id="copyInv">📋 复制招人话术（发班级群）</button></div>' +
-      '<div class="mut" style="margin-top:4px">对方同意后会自动进队，并从这里消失。</div>';
+      '<div class="mut" style="margin-top:4px">点名字就直接加入你的队，<b>不用对方同意</b>，加完就从这里消失。</div>';
   } else {
     h += '<div class="mut">这个任务里所有人都已入组，或者都已经被邀请过了。</div>';
   }
@@ -762,6 +762,8 @@ function admKey(el) {
   if (el.dataset.f) return 'f:' + el.dataset.f + ':' + (el.dataset.id || '');
   if (el.dataset.seq) return 'seq:' + el.dataset.seq;
   if (el.dataset.newlead) return 'lead:' + el.dataset.newlead;
+  if (el.dataset.rn) return 'rn:' + el.dataset.rn;
+  if (el.dataset.rns) return 'rns:' + el.dataset.rns;
   if (el.dataset.mvcode) return 'mvc:' + el.dataset.mvcode;
   if (el.dataset.mvto) return 'mvt:' + el.dataset.mvto;
   if (el.id) return 'id:' + el.id;
@@ -837,7 +839,9 @@ function renderAdmin() {
       '<div class="row" style="margin-top:8px">' +
       '<button class="b-blue sm" data-save="' + esc(t.id) + '">保存</button>' +
       '<button class="b-orange sm" data-auto="' + esc(t.id) + '">自动分配未入组的人</button>' +
-      '</div></div>';
+      '</div>' +
+      '<div class="mut" style="margin-top:4px">改「每组人数」保存后，这个任务下<b>所有队伍的容量</b>会一起改成新值。</div>' +
+      '</div>';
   });
   h += '</div>';
 
@@ -913,6 +917,12 @@ function renderAdmin() {
           '<button class="b-red sm" style="padding:0 5px;font-size:12px;margin-left:4px" data-rmmem="' +
           esc(t.id) + '|' + esc(m.code) + '" title="移出该队">✕</button></span>').join('') + '</div>' +
         '<div class="row" style="margin-top:6px">' +
+        '<input value="' + esc(g.name) + '" data-rn="' + esc(g.id) + '" style="max-width:140px" title="队名">' +
+        '<input value="' + esc(g.slogan || '') + '" data-rns="' + esc(g.id) + '" placeholder="口号" style="max-width:140px">' +
+        '<button class="b-blue sm" data-rename="' + esc(g.id) + '">改名</button>' +
+        '<button class="b-red sm" data-delteam="' + esc(g.id) + '" data-dname="' + esc(dispName(g)) + '">🗑 删组</button>' +
+        '</div>' +
+        '<div class="row" style="margin-top:6px">' +
         '<select data-newlead="' + esc(g.id) + '" style="max-width:160px">' +
         (g.members || []).map(m => '<option value="' + esc(m.code) + '">' + esc(m.name) + '</option>').join('') + '</select>' +
         '<button class="b-purple sm" data-setlead="' + esc(g.id) + '">换组长</button>' +
@@ -969,6 +979,18 @@ function renderAdmin() {
   wire('[data-up]', b => call('team_admin_swap', { p_password: ADMPW, p_a: b.dataset.prev, p_b: b.dataset.up }));
   wire('[data-dn]', b => call('team_admin_swap', { p_password: ADMPW, p_a: b.dataset.next, p_b: b.dataset.dn }));
   wire('[data-reroll]', b => call('team_admin_reroll_crest', { p_password: ADMPW, p_team: b.dataset.reroll }));
+  wire('[data-rename]', b => {
+    const id = b.dataset.rename;
+    const nm = document.querySelector('[data-rn="' + id + '"]');
+    const sl = document.querySelector('[data-rns="' + id + '"]');
+    return call('team_admin_rename', {
+      p_password: ADMPW, p_team: id, p_name: nm ? nm.value : '', p_slogan: sl ? sl.value : ''
+    });
+  });
+  wire('[data-delteam]', b => {
+    if (!confirm('把「' + b.dataset.dname + '」整队删除？\n该队所有人会变回未分组，不能撤销。')) return null;
+    return call('team_admin_delete_team', { p_password: ADMPW, p_team: b.dataset.delteam });
+  });
   wire('[data-demote]', b => {
     if (!confirm('让这个队的队长卸任？该队会变成无队长。')) return null;
     return call('team_admin_demote', { p_password: ADMPW, p_team: b.dataset.demote });
