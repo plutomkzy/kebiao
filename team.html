@@ -603,6 +603,11 @@ function renderMine() {
         '<span class="mavatar' + (m.role === 'leader' ? ' leader' : '') + '">' + avatar(m.code, 3) + '<b>' + esc(m.name) + '</b></span>').join('') + '</div>';
     if (g.role === 'leader') {
       const rest = team.capacity - team.member_count;
+      h += '<label>队名（队长可随时改，最多 12 字）</label>' +
+        '<div class="row">' +
+        '<input id="rnName" class="grow" maxlength="12" value="' + esc(team.name) + '" placeholder="队名">' +
+        '<input id="rnSlogan" style="max-width:150px" maxlength="20" value="' + esc(team.slogan || '') + '" placeholder="口号（选填）">' +
+        '<button class="b-blue sm" id="renameBtn">保存队名</button></div>';
       h += '<div class="mut" style="margin-top:8px">' + (rest > 0 ? '还差 ' + rest + ' 人：到下面「未分组」点邀请。' : '本组已满员。') + '</div>';
       const others = (team.members || []).filter(m => m.role !== 'leader');
       if (others.length) {
@@ -676,6 +681,16 @@ function renderMine() {
     cp.innerHTML = crestFromSeed(pickSeed, 4);
     cp.onclick = () => { pickSeed = newSeed(); cp.innerHTML = crestFromSeed(pickSeed, 4); };
   }
+  const rn = $('#renameBtn');
+  if (rn && team) rn.onclick = async () => {
+    const nm = $('#rnName').value.trim();
+    if (!nm) { toast('队名不能为空', true); return; }
+    const r = await call('team_rename', P({
+      p_team: team.id, p_name: nm, p_slogan: $('#rnSlogan').value.trim()
+    }));
+    toast(r.msg || '', !r.ok);
+    if (r.ok) refreshNow();
+  };
   const mc = $('#myCrest');
   if (mc && g && g.role === 'leader' && team) {
     mc.onclick = async () => {
