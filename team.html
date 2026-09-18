@@ -90,9 +90,6 @@ input,select,textarea{width:100%;font-family:inherit;font-size:15px;padding:9px;
 input:focus,select:focus{border-color:var(--cyan)}
 label{display:block;font-size:13px;color:var(--dim);margin:8px 0 4px}
 /* ===== 关系网 ===== */
-.relmap{width:100%;max-width:100%;height:240px;display:block;background:#0a0c1c;border:3px solid var(--line);box-shadow:inset 0 4px 0 rgba(0,0,0,.5)}
-.relchip{display:inline-flex;align-items:center;gap:6px;border:2px solid var(--line);background:#191d3d;padding:3px 8px 3px 3px;margin:4px 4px 0 0}
-.relchip.a{background:#173a24}.relchip.p{background:#3a2a12}.relchip.f{background:#251a44}
 /* ===== 底部 ===== */
 .foot{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;padding:9px;background:var(--bg2);border-top:3px solid var(--line)}
 .foot .btn{flex:1}
@@ -126,12 +123,6 @@ label{display:block;font-size:13px;color:var(--dim);margin:8px 0 4px}
   <div id="invites"></div>
   <div id="mine"></div>
   <div id="lobby"></div>
-
-  <!-- 关系 -->
-  <div class="pk sec" id="relSec">
-    <h2>关系网</h2>
-    <div id="relBox"></div>
-  </div>
 
   <!-- 管理 -->
   <details class="pk sec">
@@ -464,9 +455,6 @@ function diffEvents(prev, now) {
   if (!prev) return ev;
   const pid = new Set((prev.invites || []).map(x => x.id));
   (now.invites || []).forEach(v => { if (!pid.has(v.id)) ev.push('「' + v.team_name + '」邀请你加入'); });
-  const pr = new Set((prev.relations || []).filter(r => r.status === 'pending' && !r.mine).map(r => r.id));
-  (now.relations || []).filter(r => r.status === 'pending' && !r.mine)
-    .forEach(r => { if (!pr.has(r.id)) ev.push(r.other_name + ' 想和你成为搭档'); });
   const pq = new Set((prev.my_requests || []).map(r => r.id));
   const nq = new Set((now.my_requests || []).map(r => r.id));
   pq.forEach(id => { if (!nq.has(id)) ev.push('你有一条申请已被处理'); });
@@ -558,7 +546,7 @@ function render() {
   }).join('');
   document.querySelectorAll('.tab').forEach(b => b.onclick = () => { CUR = b.dataset.t; render(); });
 
-  renderInvites(); renderMine(); renderLobby(); renderRel();
+  renderInvites(); renderMine(); renderLobby();
 }
 
 /* ---------- 邀请 ---------- */
@@ -613,8 +601,18 @@ function renderMine() {
           '<select id="kickSel" class="grow">' + others.map(m => '<option value="' + esc(m.code) + '">' + esc(m.name) + '</option>').join('') + '</select>' +
           '<button class="b-red sm" id="kickBtn">提交</button></div>';
       }
+      h += '<div style="margin-top:10px"><button class="b-ghost block" id="stepDown">退出队长身份（我仍是队员）</button></div>' +
+        '<div class="mut" style="margin-top:4px">退出后本队暂时没有队长，管理员可以指派别人，队员也能自己申请。</div>';
     } else {
       h += '<div style="margin-top:10px"><button class="b-ghost block" id="leaveBtn">申请退组（组长批）</button></div>';
+      const noLead = (team.leader_code === '');
+      const asked = (ST.my_requests || []).some(r => r.kind === 'take_leader' && r.team_id === team.id && r.status === 'pending');
+      if (noLead) {
+        h += asked
+          ? '<div class="mut" style="margin-top:8px">你已申请当本队队长，等管理员批准。</div>'
+          : '<div style="margin-top:8px"><button class="b-orange block" id="takeLead">申请当本队队长</button></div>' +
+            '<div class="mut" style="margin-top:4px">本队目前没有队长，谁都可以申请，管理员批准后生效。</div>';
+      }
     }
     h += '</div>';
   } else {
@@ -677,6 +675,17 @@ function renderMine() {
       else toast(r.msg || '更换失败', true);
     };
   }
+  const sd = $('#stepDown');
+  if (sd) sd.onclick = async () => {
+    if (!confirm('确定退出队长身份？你会留在本队当普通队员，本队暂时由管理员指派新队长。')) return;
+    const r = await call('team_step_down', P({ p_team: team.id }));
+    toast(r.msg || '', !r.ok); refreshNow();
+  };
+  const tl = $('#takeLead');
+  if (tl) tl.onclick = async () => {
+    const r = await call('team_take_leader_apply', P({ p_team: team.id }));
+    toast(r.msg || '', !r.ok); refreshNow();
+  };
 }
 
 /* ---------- 大厅 ---------- */
@@ -736,92 +745,6 @@ function renderLobby() {
   if (ci) ci.onclick = () => copyText(inviteText());
 }
 
-/* ---------- 关系网 ---------- */
-function renderRel() {
-  const rels = (ST.relations || []).filter(r => r.rtype === '搭档');
-  const act = rels.filter(r => r.status === 'active');
-  const pend = rels.filter(r => r.status === 'pending');
-  let h = '<div class="mut">搭档：<b>一人只能有一个</b>，双方确认后生效。组队时系统会优先把搭档放进同一队（到期自动分配也遵守）。</div>';
-
-  h += '<canvas class="relmap" id="relmap" width="700" height="320"></canvas>';
-
-  h += '<div style="margin-top:8px">' +
-    (act.length ? act.map(r => '<span class="relchip a">' +
-      '<span style="display:inline-block;width:20px;height:20px">' + avatar(r.other_code, 2.5) + '</span>' +
-      '<b>' + esc(r.other_name) + '</b><span class="mut">搭档</span>' +
-      '<button class="b-ghost sm" data-relend="' + esc(r.id) + '">解除</button></span>').join('')
-      : '<span class="mut">还没有搭档</span>') + '</div>';
-
-  if (pend.length) {
-    h += '<div style="margin-top:10px"><h2>待确认</h2>' + pend.map(r => {
-      const mine = r.mine;
-      return '<div class="pk inset" style="padding:8px;margin-bottom:6px"><div class="row">' +
-        '<span class="grow">' + esc(r.other_name) + ' · 搭档邀请' + (mine ? '（我发出的）' : '（对方邀请）') + '</span>' +
-        (mine ? '<button class="b-ghost sm" data-relend="' + esc(r.id) + '">撤回</button>'
-              : '<button class="b-green sm" data-relok="' + esc(r.id) + '">同意</button>' +
-                '<button class="b-ghost sm" data-relend="' + esc(r.id) + '">拒绝</button>') +
-        '</div></div>';
-    }).join('') + '</div>';
-  }
-
-  if (!act.length) {
-    h += '<div style="margin-top:12px"><h2>找搭档</h2><div class="row">' +
-      '<select id="relWho" class="grow">' + (ST.classmates || []).filter(c => c.code !== CODE)
-        .map(c => '<option value="' + esc(c.code) + '">' + esc(c.name) + '（' + esc(c.code) + '）</option>').join('') + '</select>' +
-      '<button class="b-purple" id="relBtn">发出搭档邀请</button></div>' +
-      '<div class="mut" style="margin-top:4px">对方同意后，你们就成为搭档。</div></div>';
-  } else {
-    h += '<div class="mut" style="margin-top:10px">已有搭档。想换人先点上面的「解除」。</div>';
-  }
-
-  $('#relBox').innerHTML = h;
-  wire('[data-relend]', b => call('relation_end', P({ p_id: b.dataset.relend })));
-  wire('[data-relok]', b => call('relation_respond', P({ p_id: b.dataset.relok, p_accept: true })));
-  const rb = $('#relBtn');
-  if (rb) rb.onclick = async () => {
-    const r = await call('relation_request', P({ p_to: $('#relWho').value, p_type: '搭档' }));
-    toast(r.msg || '', !r.ok); load(true, true);
-  };
-  drawRelMap(rels);
-}
-
-function drawRelMap(rels) {
-  const cv = $('#relmap'); if (!cv) return;
-  const dpr = Math.min(2, window.devicePixelRatio || 1);
-  const W = Math.max(240, cv.clientWidth || 320), H = 240;
-  if (cv.width !== W * dpr || cv.height !== H * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
-  const g = cv.getContext('2d');
-  g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  g.clearRect(0, 0, W, H);
-  g.strokeStyle = 'rgba(255,255,255,.06)'; g.lineWidth = 1;
-  for (let x = 0; x < W; x += 20) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); }
-  for (let y = 0; y < H; y += 20) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
-  const cx = W / 2, cy = H / 2;
-  const list = (rels || []).filter(r => r.status === 'active');
-  if (!list.length) {
-    g.fillStyle = '#6d76a8'; g.font = '15px SimSun, sans-serif'; g.textAlign = 'center';
-    g.fillText('还没有关系，先邀请一位同学试试', cx, cy);
-  }
-  const R = Math.min(W / 2 - 34, H / 2 - 42);
-  list.forEach((r, i) => {
-    const a = -Math.PI / 2 + i * (Math.PI * 2 / Math.max(1, list.length));
-    const x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R;
-    g.strokeStyle = r.rtype === '搭档' ? '#3ddc84' : r.rtype === '好友' ? '#b06bff' : '#ffb02e';
-    g.lineWidth = 4; g.beginPath(); g.moveTo(cx, cy); g.lineTo(x, y); g.stroke();
-    g.fillStyle = '#191d3d'; g.fillRect(x - 17, y - 17, 34, 34);
-    g.strokeStyle = '#05060f'; g.lineWidth = 3; g.strokeRect(x - 17, y - 17, 34, 34);
-    g.fillStyle = '#f4f4ff'; g.font = '12px SimSun, sans-serif'; g.textAlign = 'center';
-    g.fillText((r.other_name || '').slice(0, 5), x, y + 30);
-    g.fillStyle = r.rtype === '搭档' ? '#3ddc84' : r.rtype === '好友' ? '#b06bff' : '#ffb02e';
-    g.font = '11px SimSun, sans-serif';
-    g.fillText(r.rtype, x, y - 22);
-  });
-  g.fillStyle = '#ffd23f'; g.fillRect(cx - 18, cy - 18, 36, 36);
-  g.strokeStyle = '#05060f'; g.lineWidth = 3; g.strokeRect(cx - 18, cy - 18, 36, 36);
-  g.fillStyle = '#1b1b1f'; g.font = 'bold 15px SimSun, sans-serif'; g.textAlign = 'center';
-  g.fillText('我', cx, cy + 5);
-}
-window.addEventListener('resize', () => { if (ST) drawRelMap(ST.relations); });
 
 /* ---------- 管理后台 ---------- */
 async function loadAdmin(silent) {
@@ -835,7 +758,9 @@ function renderAdmin() {
   const reqs = ADM.requests || [];
   let h = '<div class="row" style="margin-top:10px"><b class="grow">待审批 ' + reqs.length + '</b></div>';
   h += reqs.length ? reqs.map(q => {
-    const txt = q.kind === 'leader_apply' ? '申请当组长' : q.kind === 'kick' ? '申请踢人' : '申请退组';
+    const txt = q.kind === 'leader_apply' ? '申请当组长'
+      : q.kind === 'take_leader' ? '申请当本队队长'
+        : q.kind === 'kick' ? '申请踢人' : '申请退组';
     const who = q.kind === 'kick' ? (esc(q.from_name) + ' → 踢出 ' + esc(q.target_name)) : esc(q.from_name);
     return '<div class="pk inset" style="padding:8px;margin:6px 0"><div class="row">' +
       '<span class="grow">' + txt + ' · ' + esc(q.task_id || '') + '<br><span class="mut">' + who + '（' + esc(q.from_code) + '）</span></span>' +
@@ -890,7 +815,18 @@ function renderAdmin() {
     '<select id="aLTask" class="grow">' + (ADM.tasks || []).map(t => '<option value="' + esc(t.id) + '">' + esc(t.title) + '</option>').join('') + '</select>' +
     '<input id="aCode" placeholder="学号" style="max-width:120px">' +
     '<button class="b-orange sm" id="aMake">设为组长（无组则先建组）</button></div>' +
-    '<div class="mut" style="margin-top:4px">给已有队伍换组长：点队伍里的"换组长"。</div></div>';
+    '<div class="mut" style="margin-top:4px">给已有队伍换组长：点队伍里的"换组长"；让队长下台：点"队长卸任"。</div></div>';
+
+  // 组长资格（可撤销）
+  const leads = ADM.leaders || [];
+  h += '<div style="margin-top:12px"><h2>组长资格（已批准 ' + leads.length + ' 人）</h2>' +
+    '<div class="mut">撤销后他不能再建新队；已经建好的队不受影响，可以用"换组长"或"队长卸任"处理。</div>';
+  h += leads.length ? leads.map(L =>
+    '<div class="row" style="margin-top:6px"><span class="grow">' + esc(L.name) + '（' + esc(L.code) + '）' +
+    ' <span class="mut">' + esc(L.task_id) + '</span></span>' +
+    '<button class="b-red sm" data-revoke="' + esc(L.code) + '|' + esc(L.task_id) + '">撤销组长资格</button></div>').join('')
+    : '<div class="mut">还没有已批准的组长</div>';
+  h += '</div>';
 
   // 调组（点选 + 拖拽）
   h += '<div style="margin-top:12px"><h2>调组（原组留空）</h2>' +
@@ -898,18 +834,36 @@ function renderAdmin() {
   (ADM.tasks || []).forEach(t => {
     const ts = (ADM.teams || []).filter(x => x.task_id === t.id);
     if (!ts.length) return;
+    const un = (ADM.ungrouped || []).filter(u => u.task_id === t.id);
     h += '<details style="margin-top:6px"><summary style="cursor:pointer">' + esc(t.title) + '（' + ts.length + ' 队）</summary>';
+    // 直接把未分组的人加进某个队
+    h += '<div class="pk inset" style="padding:8px;margin:6px 0;background:#16233a">' +
+      '<b>把未分组的人加进队伍</b>' +
+      '<div class="row" style="margin-top:6px">' +
+      '<select id="addWho_' + esc(t.id) + '" class="grow">' +
+      (un.length ? un.map(u => '<option value="' + esc(u.code) + '">' + esc(u.name) + '</option>').join('')
+        : '<option value="">（这个任务没有未分组的人）</option>') +
+      '</select>' +
+      '<select id="addTo_' + esc(t.id) + '" style="max-width:170px">' +
+      ts.map(g => '<option value="' + esc(g.id) + '">' + esc(dispName(g)) + ' ' + (g.members || []).length + '/' + g.capacity + '</option>').join('') +
+      '</select>' +
+      '<button class="b-green sm" data-addmem="' + esc(t.id) + '">加进去</button></div>' +
+      '<div class="mut" style="margin-top:4px">只能加"这个任务里还没队伍"的人；已经在本任务别的队里的人，用调组或先移出。</div>' +
+      '</div>';
     ts.forEach(g => {
       h += '<div class="pk inset team" data-dropteam="' + esc(g.id) + '" data-task="' + esc(t.id) + '" style="padding:8px;margin:6px 0">' +
         '<div class="crest" style="width:52px;height:52px">' + teamCrest(g, 3.25) + '</div>' +
         '<div class="grow"><b>' + esc(dispName(g)) + '</b> <span class="mut">' + (g.members || []).length + '/' + g.capacity + '</span>' +
         '<div class="membar">' + (g.members || []).map(m =>
           '<span class="mavatar draggable' + (m.role === 'leader' ? ' leader' : '') + '" draggable="true" data-code="' + esc(m.code) + '">' +
-          avatar(m.code, 2.6) + '<b>' + esc(m.name) + '</b></span>').join('') + '</div>' +
+          avatar(m.code, 2.6) + '<b>' + esc(m.name) + '</b>' +
+          '<button class="b-red sm" style="padding:0 5px;font-size:12px;margin-left:4px" data-rmmem="' +
+          esc(t.id) + '|' + esc(m.code) + '" title="移出该队">✕</button></span>').join('') + '</div>' +
         '<div class="row" style="margin-top:6px">' +
         '<select data-newlead="' + esc(g.id) + '" style="max-width:160px">' +
         (g.members || []).map(m => '<option value="' + esc(m.code) + '">' + esc(m.name) + '</option>').join('') + '</select>' +
         '<button class="b-purple sm" data-setlead="' + esc(g.id) + '">换组长</button>' +
+        (g.leader_code ? '<button class="b-ghost sm" data-demote="' + esc(g.id) + '">队长卸任</button>' : '<span class="mut">无队长</span>') +
         '<button class="b-ghost sm" data-reroll="' + esc(g.id) + '" title="换纹章">🎲</button>' +
         '</div></div></div>';
     });
@@ -961,6 +915,28 @@ function renderAdmin() {
   wire('[data-up]', b => call('team_admin_swap', { p_password: ADMPW, p_a: b.dataset.prev, p_b: b.dataset.up }));
   wire('[data-dn]', b => call('team_admin_swap', { p_password: ADMPW, p_a: b.dataset.next, p_b: b.dataset.dn }));
   wire('[data-reroll]', b => call('team_admin_reroll_crest', { p_password: ADMPW, p_team: b.dataset.reroll }));
+  wire('[data-demote]', b => {
+    if (!confirm('让这个队的队长卸任？该队会变成无队长。')) return null;
+    return call('team_admin_demote', { p_password: ADMPW, p_team: b.dataset.demote });
+  });
+  wire('[data-revoke]', b => {
+    const parts = b.dataset.revoke.split('|');
+    if (!confirm('撤销该同学的组长资格？')) return null;
+    return call('team_admin_revoke_apply', { p_password: ADMPW, p_task: parts[1], p_code: parts[0] });
+  });
+  wire('[data-addmem]', b => {
+    const task = b.dataset.addmem;
+    const who = document.getElementById('addWho_' + task);
+    const to = document.getElementById('addTo_' + task);
+    if (!who || !who.value) { toast('这个任务没有未分组的人', true); return null; }
+    if (!to || !to.value) { toast('还没有队伍可以加入', true); return null; }
+    return call('team_admin_add_member', { p_password: ADMPW, p_task: task, p_code: who.value, p_team: to.value });
+  });
+  wire('[data-rmmem]', b => {
+    const p = b.dataset.rmmem.split('|');
+    if (!confirm('把这位同学移出该队？（他会变成未分组）')) return null;
+    return call('team_admin_remove_member', { p_password: ADMPW, p_task: p[0], p_code: p[1] });
+  });
 
   // 拖拽 / 点选调组
   let dragCode = null;
