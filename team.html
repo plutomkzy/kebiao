@@ -426,9 +426,18 @@ let ST = null, CUR = null, ADM = null, ADMPW = sessionStorage.getItem('admpw') |
 let pickSeed = 0;
 let lastSig = '', lastAdmSig = '', lastTouch = 0, busy = false;
 
-// 记录用户操作时间：滚动/触摸期间不刷新，避免画面跳动
-['scroll', 'touchstart', 'touchmove', 'wheel', 'pointerdown', 'keydown'].forEach(ev =>
-  window.addEventListener(ev, () => { lastTouch = Date.now(); }, { passive: true }));
+// 记录用户操作时间：滚动/触摸/输入期间不刷新，避免画面跳动
+['scroll', 'touchstart', 'touchmove', 'wheel', 'pointerdown', 'keydown',
+  'focusin', 'input', 'change'].forEach(ev =>
+    window.addEventListener(ev, () => { lastTouch = Date.now(); }, { passive: true }));
+
+// 正在填表（选日期、选人、输入）时，不要刷新
+function editing() {
+  const a = document.activeElement;
+  if (!a) return false;
+  if (a.closest && a.closest('#admBox')) return true;
+  return /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName);
+}
 
 /* ================= 提醒（震动 / 标题闪烁 / 系统通知，无声音） ================= */
 let titleTimer = null;
@@ -501,8 +510,8 @@ function nameOf(code) { const c = (ST.classmates || []).find(x => x.code === cod
 function canCreate(t) { return (ST.leader_tasks || []).indexOf(t) >= 0; }
 
 async function load(keep, force) {
-  // 1) 用户正在滑动：先不刷新（防止画面跳动）
-  if (!force && Date.now() - lastTouch < 1500) return;
+  // 1) 用户正在滑动或正在填表：先不刷新（防止画面跳动、表单被重置）
+  if (!force && (Date.now() - lastTouch < 1500 || editing())) return;
   if (busy) return;
   busy = true;
   const y = window.scrollY;
@@ -747,14 +756,58 @@ function renderLobby() {
 
 
 /* ---------- 管理后台 ---------- */
+// 后台表单状态快照：重绘前后保持不变，避免选好的日期/人员被刷新掉
+function admKey(el) {
+  if (!el) return null;
+  if (el.dataset.f) return 'f:' + el.dataset.f + ':' + (el.dataset.id || '');
+  if (el.dataset.seq) return 'seq:' + el.dataset.seq;
+  if (el.dataset.newlead) return 'lead:' + el.dataset.newlead;
+  if (el.dataset.mvcode) return 'mvc:' + el.dataset.mvcode;
+  if (el.dataset.mvto) return 'mvt:' + el.dataset.mvto;
+  if (el.id) return 'id:' + el.id;
+  return null;
+}
+function admSnap() {
+  const s = { vals: {}, open: [], focus: null };
+  if (!ADM) return s;
+  document.querySelectorAll('#admBox input, #admBox select').forEach(el => {
+    const k = admKey(el);
+    if (k) s.vals[k] = el.value;
+  });
+  document.querySelectorAll('#admBox details').forEach((d, i) => { if (d.open) s.open.push(i); });
+  const a = document.activeElement;
+  if (a && a.closest && a.closest('#admBox')) s.focus = admKey(a);
+  return s;
+}
+function admRestore(s) {
+  if (!s) return;
+  const els = [].slice.call(document.querySelectorAll('#admBox input, #admBox select'));
+  els.forEach(el => {
+    const k = admKey(el);
+    if (k && s.vals[k] !== undefined) el.value = s.vals[k];
+  });
+  document.querySelectorAll('#admBox details').forEach((d, i) => { if (s.open.indexOf(i) >= 0) d.open = true; });
+  if (s.focus) {
+    const el = els.find(x => admKey(x) === s.focus);
+    if (el && el !== document.activeElement) { try { el.focus({ preventScroll: true }); } catch (e) { } }
+  }
+}
 async function loadAdmin(silent) {
   if (!ADMPW) return;
   const j = await call('team_admin_state', { p_password: ADMPW });
-  if (!j.ok) { if (!silent && ADMPW) { toast(j.msg || '口令错误', true); sessionStorage.removeItem('admpw'); ADMPW = ''; } return; }
-  ADM = j; renderAdmin();
+  if (!j.ok) {
+    if (!silent) { toast(j.msg || '口令错误', true); sessionStorage.removeItem('admpw'); ADMPW = ''; lastAdmSig = ''; }
+    return;
+  }
+  const sig = JSON.stringify(j);
+  if (sig === lastAdmSig) return;      // 后台数据没变化 → 不重绘，表单不被打断
+  lastAdmSig = sig;
+  ADM = j;
+  renderAdmin();
 }
 function renderAdmin() {
   if (!ADM) return;
+  const snap = admSnap();          // 记住当前表单里的选择和展开状态
   const reqs = ADM.requests || [];
   let h = '<div class="row" style="margin-top:10px"><b class="grow">待审批 ' + reqs.length + '</b></div>';
   h += reqs.length ? reqs.map(q => {
@@ -877,6 +930,7 @@ function renderAdmin() {
       : '<div class="mut">所有任务都已分好</div>') + '</div>';
 
   $('#admBox').innerHTML = h;
+  admRestore(snap);                // 重绘后把选择/展开还原回去
 
   wire('[data-ap]', b => call('team_admin_decide', { p_password: ADMPW, p_request: b.dataset.ap, p_approve: true }));
   wire('[data-rj]', b => call('team_admin_decide', { p_password: ADMPW, p_request: b.dataset.rj, p_approve: false }));
