@@ -16,6 +16,12 @@
       <h1 id="title">小组讲解评分</h1>
       <div class="sub" id="sub"></div>
       <div class="note" id="bind"></div>
+      <div style="text-align:center;margin-top:10px">
+        <button class="btn small" id="logoutBtn"
+          style="background:linear-gradient(180deg,#c34a3b,#963127);border-color:var(--red-dark);color:#fdf3d7">
+          登出
+        </button>
+      </div>
     </div>
 
     <div class="groups" id="groups"></div>
@@ -172,6 +178,13 @@ async function init() {
     $('#spwmsg').textContent = j.ok ? '' : (j.msg || '更新失败');
     if (j.ok) { sessionStorage.setItem('spwd', n1); $('#sold').value = $('#snew1').value = $('#snew2').value = ''; showToast('个人口令已更新'); }
   };
+  $('#logoutBtn').onclick = () => {
+    if (!confirm('确定退出登录？\n退出后下次进来要重新输口令。')) return;
+    ['cls', 'code', 'spwd', 'app', 'sname', 'role'].forEach(k => sessionStorage.removeItem(k));
+    try { localStorage.removeItem('kb_auto'); } catch (e) { }
+    location.href = 'index.html';
+  };
+
   $('#submit').onclick = async () => {
     if (STD) {
       if (scores.some(s => !s)) { $('#msg').textContent = '尚有项目未评分，请完成全部'; return; }

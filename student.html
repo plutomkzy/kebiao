@@ -7,12 +7,35 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23b03a2e'/%3E%3Ctext x='32' y='43' font-size='34' text-anchor='middle' fill='%23f7ead0' font-family='serif'%3E%E8%AF%84%3C/text%3E%3C/svg%3E">
 <title>学生入口 · 课标讲解评分系统</title>
 <link rel="stylesheet" href="style.css">
+<style>
+  .remember{display:flex;align-items:center;gap:8px;justify-content:center;margin-top:12px;
+    font-size:15px;color:#5c451f;cursor:pointer;user-select:none}
+  .remember input{width:22px;height:22px;margin:0;cursor:pointer}
+  .autologin{text-align:center;padding:26px 10px}
+  .autologin .spin{width:34px;height:34px;margin:0 auto 14px;border:5px solid #d9c8a0;
+    border-top-color:#b03a2e;border-radius:50%;animation:sp 1s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .autoTip{margin-top:10px;font-size:13.5px;color:#8a7550}
+</style>
 </head>
 <body>
 <div class="wrap">
   <div class="panel">
+
+    <!-- 自动登录中 -->
+    <div id="auto" style="display:none">
+      <div class="head">
+        <span class="seal">生</span>
+        <h1>正在自动登录…</h1>
+        <div class="sub" id="autosub">正在核对上次的登录信息</div>
+      </div>
+      <div class="autologin"><div class="spin"></div>
+        <div id="automsg" class="autoTip">请稍等</div>
+      </div>
+    </div>
+
     <!-- 第一步：班级码 -->
-    <div id="step1">
+    <div id="step1" style="display:none">
       <div class="head">
         <span class="seal">生</span>
         <h1>学生入口</h1>
@@ -23,7 +46,7 @@
       <div id="msg"></div>
     </div>
 
-    <!-- 第二步：学号 -->
+    <!-- 第二步：学号 / 口令 -->
     <div id="step2" style="display:none">
       <div class="head">
         <span class="seal">生</span>
@@ -31,7 +54,8 @@
         <div class="sub">第二步：输入你的口令（首次使用：口令=你的学号）</div>
       </div>
       <input type="password" id="spwd" placeholder="口令" style="text-align:center;letter-spacing:4px">
-      <button class="btn primary" id="go2" style="margin-top:12px">进入评分</button>
+      <label class="remember"><input type="checkbox" id="remember">记住我，下次自动登录</label>
+      <button class="btn primary" id="go2" style="margin-top:12px">进入</button>
       <div id="msg2"></div>
     </div>
   </div>
@@ -40,7 +64,45 @@
 <script src="app.js"></script>
 <script>
 const $ = s => document.querySelector(s);
+const AUTO_KEY = 'kb_auto';      // 自动登录信息（勾了"记住我"才有）
+
+function saveAuto(o) { try { localStorage.setItem(AUTO_KEY, JSON.stringify(o)); } catch (e) { } }
+function clearAuto() { try { localStorage.removeItem(AUTO_KEY); } catch (e) { } }
+function readAuto() {
+  try { const s = localStorage.getItem(AUTO_KEY); return s ? JSON.parse(s) : null; } catch (e) { return null; }
+}
+function setSession(cls, app, code, spwd, name) {
+  sessionStorage.setItem('cls', cls);
+  sessionStorage.setItem('app', app || 'score');
+  sessionStorage.setItem('role', 'student');
+  sessionStorage.setItem('code', code);
+  sessionStorage.setItem('spwd', spwd);
+  sessionStorage.setItem('sname', name || '');
+}
+function goApp(app) { location.href = (app === 'team') ? 'team.html' : 'vote.html'; }
+
 async function init() {
+  // ---------- 1. 有"记住我"就直接自动登录 ----------
+  const auto = readAuto();
+  if (auto && auto.spwd && auto.cls) {
+    $('#auto').style.display = 'block';
+    $('#autosub').textContent = '上次登录：' + (auto.name || auto.code || '');
+    const j = await rpc('verify_student_pwd', { p_cls: auto.cls, p_pwd: auto.spwd });
+    if (j && j.ok) {
+      $('#automsg').textContent = '登录成功，正在进入…';
+      setSession(auto.cls, auto.app, j.code, auto.spwd, j.name || auto.name);
+      setTimeout(() => goApp(auto.app), 350);
+      return;
+    }
+    clearAuto();
+    $('#auto').style.display = 'none';
+    $('#msg').textContent = '上次的自动登录已失效（可能改过口令），请重新输入';
+    $('#step1').style.display = 'block';
+  } else {
+    $('#step1').style.display = 'block';
+  }
+
+  // ---------- 2. 正常两步登录 ----------
   $('#go1').onclick = async () => {
     const pw = $('#pw').value;
     if (!pw) { $('#msg').textContent = '请输入班级码'; return; }
@@ -48,26 +110,29 @@ async function init() {
     if (!j.ok) { $('#msg').textContent = j.msg || '验证失败，请重试'; return; }
     if (j.role !== 'student') { $('#msg').textContent = '该密钥不是学生班级码，请从对应入口进入'; return; }
     sessionStorage.setItem('cls', j.cls);
-    // app: 'score' 打分系统 / 'team' 组队系统（隐藏入口）
-    const app = j.app || 'score';
+    const app = j.app || 'score';          // score=打分系统 / team=组队系统（隐藏入口）
     sessionStorage.setItem('app', app);
     $('#t2').textContent = (app === 'team' ? '组队' : cfgOf(j.cls).name) + ' · 学生入口';
     $('#step1').style.display = 'none';
     $('#step2').style.display = 'block';
+    const s = $('#spwd'); if (s) s.focus();
   };
   $('#pw').onkeydown = e => { if (e.key === 'Enter') $('#go1').click(); };
+
   $('#go2').onclick = async () => {
     const spwd = $('#spwd').value;
     if (!spwd) { $('#msg2').textContent = '请输入口令'; return; }
-    const j = await rpc('verify_student_pwd', { p_cls: sessionStorage.getItem('cls'), p_pwd: spwd });
+    const cls = sessionStorage.getItem('cls');
+    const app = sessionStorage.getItem('app') || 'score';
+    const j = await rpc('verify_student_pwd', { p_cls: cls, p_pwd: spwd });
     if (!j.ok) { $('#msg2').textContent = j.msg || '验证失败'; return; }
-    sessionStorage.setItem('role', 'student');
-    sessionStorage.setItem('code', j.code);
-    sessionStorage.setItem('spwd', spwd);
-    sessionStorage.setItem('sname', j.name || '');
-    location.href = (sessionStorage.getItem('app') === 'team') ? 'team.html' : 'vote.html';
+    setSession(cls, app, j.code, spwd, j.name);
+    // 勾了就记住（下次自动登录），没勾就清掉
+    if ($('#remember').checked) saveAuto({ cls: cls, app: app, code: j.code, spwd: spwd, name: j.name || '' });
+    else clearAuto();
+    goApp(app);
   };
-  $('#code').onkeydown = e => { if (e.key === 'Enter') $('#go2').click(); };
+  $('#spwd').onkeydown = e => { if (e.key === 'Enter') $('#go2').click(); };
 }
 init();
 </script>

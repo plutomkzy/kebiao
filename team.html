@@ -113,9 +113,11 @@ label{display:block;font-size:13px;color:var(--dim);margin:8px 0 4px}
       <div class="tagline" id="myTags"></div>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
-      <div style="display:flex;gap:6px">
+      <div style="display:flex;gap:6px;align-items:center">
         <button class="sm b-ghost" id="refresh" title="重新拉取最新数据">刷新</button>
         <button class="sm b-ghost" id="ntfBtn" title="开启提醒">🔔</button>
+        <button class="b-red" id="logoutBtn" title="退出登录"
+          style="padding:9px 13px;font-size:15px;letter-spacing:1px">登出</button>
       </div>
       <span class="mut" id="synced" style="font-size:11px;white-space:nowrap"></span>
     </div>
@@ -1132,6 +1134,12 @@ function renderAdmin() {
 /* ---------- 事件 ---------- */
 $('#refresh').onclick = () => hardRefresh();
 $('#reload2').onclick = () => location.reload();
+$('#logoutBtn').onclick = () => {
+  if (!confirm('确定退出登录？\n退出后下次进来要重新输口令。')) return;
+  ['cls', 'code', 'spwd', 'app', 'sname', 'role', 'admpw'].forEach(k => sessionStorage.removeItem(k));
+  try { localStorage.removeItem('kb_auto'); } catch (e) { }
+  location.href = 'index.html';
+};
 $('#ntfBtn').onclick = async () => {
   if (!window.Notification) { toast('这个浏览器不给网页发系统通知，页面开着时的提醒仍然有效', true); return; }
   try {
