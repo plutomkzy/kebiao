@@ -413,8 +413,12 @@ function cn(n) {
 function dispName(g) {
   if (!g) return '';
   let base = String(g.name || '');
-  const isGroup = /组$/.test(base);           // 已经是"第一组"这种名字，就不再加后缀
-  if (g.seq && !isGroup) base += '（第' + cn(g.seq) + '组）';
+  if (g.seq) {
+    const num = cn(g.seq);
+    // 方案 C：一律加组号；但名字里已经写着同一个号（如"第一组"就是第1组）就不重复加
+    const same = new RegExp('第\\s*' + num + '\\s*(大)?组$').test(base);
+    if (!same) base += '（第' + num + '组）';
+  }
   return base;
 }
 
@@ -712,18 +716,7 @@ function renderMine() {
 /* ---------- 大厅 ---------- */
 function renderLobby() {
   const t = ST.tasks.find(x => x.id === CUR);
-  const isLead = gOf(CUR) && gOf(CUR).role === 'leader';
-
-  // 大厅只对组长开放
-  if (!isLead) {
-    const invites = (ST.invites || []).filter(v => v.task_id === CUR);
-    $('#lobby').innerHTML = '<div class="pk sec"><h2>大厅</h2>' +
-      '<div class="mut">大厅只对组长开放。<br>你只需要等组长来邀请你——收到邀请时最上面会出现带「NEW!」的卡片，' +
-      '点「同意加入」就进队了。</div>' +
-      (invites.length ? '<div class="mut" style="margin-top:6px">当前有 ' + invites.length + ' 条邀请等你看 ↑</div>' : '') +
-      '</div>';
-    return;
-  }
+  const isLead = gOf(CUR) && gOf(CUR).role === 'leader';   // 只有队长能拉人
 
   const teams = teamsOf(CUR);
   const un = unOf(CUR).filter(u => u.code !== CODE);
@@ -733,15 +726,21 @@ function renderLobby() {
     (t && t.deadline ? ' · 截止 ' + esc(String(t.deadline).slice(0, 16).replace('T', ' ')) : '') + '</div>';
 
   // ① 未分组的人排在最前面，直接邀请
-  h += '<div class="hr"></div><h2>还没组队的人（点一下就进你的队）</h2>';
+  h += '<div class="hr"></div><h2>还没组队的人（' + un.length + ' 人）</h2>';
   if (un.length) {
-    h += '<div class="row">' + un.map(u =>
-      '<button class="b-blue sm" data-inv="' + esc(u.code) + '">＋ ' + esc(u.name) + '</button>').join('') + '</div>' +
-      '<div class="row" style="margin-top:8px">' +
-      '<button class="b-ghost sm" id="copyInv">📋 复制招人话术（发班级群）</button></div>' +
-      '<div class="mut" style="margin-top:4px">点名字就直接加入你的队，<b>不用对方同意</b>，加完就从这里消失。</div>';
+    if (isLead) {
+      h += '<div class="row">' + un.map(u =>
+        '<button class="b-blue sm" data-inv="' + esc(u.code) + '">＋ ' + esc(u.name) + '</button>').join('') + '</div>' +
+        '<div class="row" style="margin-top:8px">' +
+        '<button class="b-ghost sm" id="copyInv">📋 复制招人话术（发班级群）</button></div>' +
+        '<div class="mut" style="margin-top:4px">点名字就直接加入你的队，<b>不用对方同意</b>，加完就从这里消失。</div>';
+    } else {
+      h += '<div class="row">' + un.map(u =>
+        '<span class="mavatar">' + avatar(u.code, 2.6) + '<b>' + esc(u.name) + '</b></span>').join('') + '</div>' +
+        '<div class="mut" style="margin-top:4px">名单所有人都能看到，但<b>只有队长能把人拉进队</b>。想进哪个队，跟那个队的队长说一声。</div>';
+    }
   } else {
-    h += '<div class="mut">这个任务里所有人都已入组，或者都已经被邀请过了。</div>';
+    h += '<div class="mut">这个任务里所有人都已组队。</div>';
   }
 
   // ② 已有队伍
