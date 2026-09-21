@@ -113,7 +113,10 @@ label{display:block;font-size:13px;color:var(--dim);margin:8px 0 4px}
       <div class="tagline" id="myTags"></div>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
-      <button class="sm b-ghost" id="refresh" title="重新拉取最新数据">刷新</button>
+      <div style="display:flex;gap:6px">
+        <button class="sm b-ghost" id="refresh" title="重新拉取最新数据">刷新</button>
+        <button class="sm b-ghost" id="ntfBtn" title="开启提醒">🔔</button>
+      </div>
       <span class="mut" id="synced" style="font-size:11px;white-space:nowrap"></span>
     </div>
   </div>
@@ -503,7 +506,38 @@ function toast(m, err) {
   d.className = 'toast' + (err ? ' err' : ''); d.textContent = m;
   document.body.appendChild(d); setTimeout(() => d.remove(), 2200);
 }
-function call(fn, body) { return rpc(fn, body).then(j => (j && typeof j === 'object') ? j : { ok: false, msg: '网络异常' }); }
+// 带超时 + 自动重试的请求：手机网络不稳时不会再一直卡在"加载中"
+async function call(fn, body, tries) {
+  const n = tries || 3;
+  let lastErr = '';
+  for (let i = 0; i < n; i++) {
+    try {
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 12000);
+      const r = await fetch(C.SUPABASE_URL + '/rest/v1/rpc/' + fn, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: C.SUPABASE_ANON_KEY,
+          Authorization: 'Bearer ' + C.SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify(body),
+        signal: ctl.signal
+      });
+      clearTimeout(timer);
+      if (!r.ok) { lastErr = 'HTTP ' + r.status; }
+      else {
+        const j = await r.json();
+        if (j && typeof j === 'object') return j;
+        lastErr = '返回格式异常';
+      }
+    } catch (e) {
+      lastErr = (e && e.name === 'AbortError') ? '请求超时' : String((e && e.message) || e);
+    }
+    if (i < n - 1) await new Promise(res => setTimeout(res, 700 + i * 1500));
+  }
+  return { ok: false, net: true, msg: '连不上服务器（' + lastErr + '），点下面重试' };
+}
 function me() { return { p_cls: CLS, p_code: CODE, p_pwd: PWD }; }
 function P(o) { return Object.assign({}, me(), o); }
 function gOf(t) { return (ST.my_groups || []).find(x => x.task_id === t); }
@@ -521,8 +555,13 @@ async function load(keep, force) {
   let j;
   try { j = await call('team_state', me()); } finally { busy = false; }
   if (!j.ok) {
-    $('#lobby').innerHTML = '<div class="pk sec"><div class="mut">' + esc(j.msg || '读取失败') +
-      '<br>若提示函数不存在，请先在 Supabase 运行《组队系统补丁.sql》《组队系统补丁2.sql》《组队修复补丁.sql》。</div></div>';
+    setStatus('未连接');
+    $('#lobby').innerHTML = '<div class="pk sec"><h2>' + (j.net ? '连接失败' : '读取失败') + '</h2>' +
+      '<div class="mut">' + esc(j.msg || '') + '</div>' +
+      (j.net ? '<div class="mut" style="margin-top:4px">网络不好或服务器在唤醒（免费版闲置后会休眠，第一次要等十几秒）。</div>' : '') +
+      '<div class="row" style="margin-top:10px"><button class="b-blue" id="retryBtn">重试</button></div></div>';
+    const rb = $('#retryBtn');
+    if (rb) rb.onclick = () => hardRefresh();
     return;
   }
   // 2) 数据没变化：完全不碰 DOM（这是跳动的根源）
@@ -545,6 +584,12 @@ async function load(keep, force) {
   if (ADMPW) loadAdmin(true);
 }
 function refreshNow() { return load(true, true); }
+
+// 安全地显示"正在连接/未连接"等状态（元素不存在也不会抛错）
+function setStatus(text) {
+  const el = document.querySelector('#myTags') || document.querySelector('#who');
+  if (el) el.innerHTML = '<span class="mut">' + text + '</span>';
+}
 
 function stamp() {
   const el = $('#synced');
@@ -1110,12 +1155,26 @@ document.addEventListener('visibilitychange', () => {
   refreshNow();
 });
 
-load();
+// 首次进入：先给个"正在连接"的提示，别让人以为卡死了
+setStatus('正在连接…');
+$('#lobby').innerHTML = '<div class="pk sec"><div class="mut">正在连接服务器…</div></div>';
+
+(async function boot() {
+  await load(true, true);
+  if (!ST) {                       // 第一次没成功，3 秒后自动再试一次
+    setStatus('连接较慢，重试中…');
+    setTimeout(() => load(true, true), 3000);
+  }
+})();
+
 // 自适应轮询：前台 4 秒，后台 20 秒（手机后台会被系统限速，属正常）
 (function poll() {
   const wait = document.hidden ? 20000 : 4000;
   setTimeout(() => { load(true).finally(poll); }, wait);
 })();
+
+// 从别的页面/后台返回时（含微信里切回），立刻刷新一次
+window.addEventListener('pageshow', e => { if (e.persisted) refreshNow(); });
 </script>
 </body>
 </html>
