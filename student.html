@@ -167,23 +167,17 @@ function init() {
   const auto = readAuto();
   const bar = $('#autoBar');
   if (auto && auto.cls) {
-    let left = 3;
+    // 不自动跳转，停在选班级界面
     bar.style.display = 'block';
-    const render = () => {
-      bar.innerHTML = '上次你进的是 <b>' + clsName(auto.cls, auto.app) + ' · ' + appName(auto.app) + '</b>' +
-        (auto.name ? '（' + auto.name + '）' : '') + '，' + (left > 0 ? left + ' 秒后自动进入…' : '正在进入…') +
-        '<div class="btns"><button class="btn small" id="autoGo">立即进入</button>' +
-        '<button class="btn small" id="autoChange" style="background:#f0e2bd;color:#6b5730">换个班级</button></div>';
-      $('#autoGo').onclick = () => { clearInterval(timer); doAuto(); };
-      $('#autoChange').onclick = () => { clearInterval(timer); bar.style.display = 'none'; $('#pw').focus(); };
+    bar.innerHTML = '上次你进的是 <b>' + clsName(auto.cls, auto.app) + ' · ' + appName(auto.app) + '</b>' +
+      (auto.name ? '（' + auto.name + '）' : '') +
+      '<div class="btns"><button class="btn small" id="autoGo">直接进入上次的</button>' +
+      '<button class="btn small" id="autoChange" style="background:#f0e2bd;color:#6b5730">换个班级</button></div>';
+    $('#autoGo').onclick = () => {
+      busy($('#autoGo'), true, '进入中…');
+      goApp(auto.app);
     };
-    const doAuto = () => { goApp(auto.app); };
-    render();
-    const timer = setInterval(() => {
-      left--;
-      if (left <= 0) { clearInterval(timer); render(); setTimeout(doAuto, 300); }
-      else render();
-    }, 1000);
+    $('#autoChange').onclick = () => { bar.style.display = 'none'; $('#pw').focus(); };
     $('#quick').innerHTML = '当前设备已记住：<b>' + (auto.name || '你') + '</b>，换班级也不用再输口令';
   } else if (knownPwd()) {
     $('#quick').innerHTML = '本设备已记住：<b>' + (knownName() || '你') + '</b>，选好班级直接进，不用再输口令';
