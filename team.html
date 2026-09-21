@@ -112,8 +112,10 @@ label{display:block;font-size:13px;color:var(--dim);margin:8px 0 4px}
       <div class="pname" id="myName">加载中…</div>
       <div class="tagline" id="myTags"></div>
     </div>
-    <button class="sm b-ghost" id="ntfBtn" title="开启提醒">🔔</button>
-    <button class="sm b-ghost" id="refresh">刷新</button>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+      <button class="sm b-ghost" id="refresh" title="重新拉取最新数据">刷新</button>
+      <span class="mut" id="synced" style="font-size:11px;white-space:nowrap"></span>
+    </div>
   </div>
 
   <!-- 任务 -->
@@ -513,7 +515,7 @@ function canCreate(t) { return (ST.leader_tasks || []).indexOf(t) >= 0; }
 async function load(keep, force) {
   // 1) 用户正在滑动或正在填表：先不刷新（防止画面跳动、表单被重置）
   if (!force && (Date.now() - lastTouch < 1500 || editing())) return;
-  if (busy) return;
+  if (busy && !force) return;          // 手动刷新时即使正在轮询也照做
   busy = true;
   const y = window.scrollY;
   let j;
@@ -525,19 +527,44 @@ async function load(keep, force) {
   }
   // 2) 数据没变化：完全不碰 DOM（这是跳动的根源）
   const sig = JSON.stringify(j);
-  if (sig === lastSig) { if (ADMPW) loadAdmin(true); return; }
+  if (sig === lastSig) {
+    stamp();
+    if (ADMPW) loadAdmin(true);
+    return;
+  }
   lastSig = sig;
 
   const events = diffEvents(ST, j);      // 与上一次对比，找出新消息
   ST = j;
   if (!CUR && ST.tasks.length) CUR = ST.tasks[0].id;
   render();
+  stamp();
   if (events.length) notifyNew(events);
   // 3) 用 rAF 恢复滚动位置，避免重排瞬间的抖动
   if (keep) requestAnimationFrame(() => window.scrollTo(0, y));
   if (ADMPW) loadAdmin(true);
 }
 function refreshNow() { return load(true, true); }
+
+function stamp() {
+  const el = $('#synced');
+  if (el) el.textContent = new Date().toLocaleTimeString('zh-CN', { hour12: false }).slice(0, 8) + ' 已同步';
+}
+
+// 真正的"刷新"：清掉缓存签名 → 一定重新拉取并重绘，带按钮转态和提示
+async function hardRefresh() {
+  lastSig = ''; lastAdmSig = ''; lastTouch = 0;
+  const btn = $('#refresh');
+  if (btn) { btn.disabled = true; btn.textContent = '刷新中'; }
+  try {
+    await load(true, true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '刷新'; }
+    stopBlink();
+    stamp();
+    toast('已刷新 ' + new Date().toLocaleTimeString('zh-CN', { hour12: false }).slice(0, 8));
+  }
+}
 
 function render() {
   $('#myAvatar').innerHTML = avatar(ST.me.code, 6);
@@ -1058,8 +1085,8 @@ function renderAdmin() {
 }
 
 /* ---------- 事件 ---------- */
-$('#refresh').onclick = () => refreshNow();
-$('#reload2').onclick = () => refreshNow();
+$('#refresh').onclick = () => hardRefresh();
+$('#reload2').onclick = () => location.reload();
 $('#ntfBtn').onclick = async () => {
   if (!window.Notification) { toast('这个浏览器不给网页发系统通知，页面开着时的提醒仍然有效', true); return; }
   try {
