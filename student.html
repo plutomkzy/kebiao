@@ -36,6 +36,9 @@
       </div>
       <input type="password" id="pw" placeholder="班级码" inputmode="numeric" autocomplete="off"
         style="text-align:center;letter-spacing:6px">
+      <div style="text-align:center;font-size:13px;color:#8a7550;margin-top:6px">
+        班级码是数字（如 5 / 245）；口令可以用字母和符号，键盘会自动切回完整键盘
+      </div>
       <button class="btn primary" id="go1" style="margin-top:12px">下一步</button>
       <div id="msg"></div>
       <div class="quick" id="quick"></div>
@@ -48,8 +51,12 @@
         <h1 id="t2">学生入口</h1>
         <div class="sub" id="sub2">第二步：输入你的口令（首次使用：口令=你的学号）</div>
       </div>
-      <input type="password" id="spwd" placeholder="口令" inputmode="numeric" autocomplete="off"
-        style="text-align:center;letter-spacing:4px">
+      <div style="display:flex;gap:8px;align-items:stretch">
+        <input type="password" id="spwd" placeholder="口令" autocomplete="off" autocapitalize="off"
+          autocorrect="off" spellcheck="false" style="text-align:center;letter-spacing:2px">
+        <button class="btn small" id="eye" title="显示/隐藏口令"
+          style="padding:0 14px;margin:0;font-size:18px">👁</button>
+      </div>
       <label class="remember"><input type="checkbox" id="remember" checked>记住我，下次自动登录</label>
       <button class="btn primary" id="go2" style="margin-top:12px">进入</button>
       <div id="msg2"></div>
@@ -232,6 +239,13 @@ function init() {
     goApp(app);
   };
   $('#spwd').onkeydown = e => { if (e.key === 'Enter') $('#go2').click(); };
+
+  $('#eye').onclick = () => {
+    const i = $('#spwd');
+    i.type = (i.type === 'password') ? 'text' : 'password';
+    $('#eye').style.opacity = (i.type === 'text') ? '1' : '.75';
+    i.focus();
+  };
 
   $('#back1').onclick = () => {
     $('#step2').style.display = 'none';
