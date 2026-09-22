@@ -18,7 +18,6 @@
   .spin{display:inline-block;width:13px;height:13px;margin-right:6px;vertical-align:-1px;
     border:3px solid #e2d3ab;border-top-color:#b03a2e;border-radius:50%;animation:sp .9s linear infinite}
   @keyframes sp{to{transform:rotate(360deg)}}
-  .quick{margin-top:10px;text-align:center;font-size:14px;color:#8a7550}
 </style>
 </head>
 <body>
@@ -32,16 +31,12 @@
       <div class="head">
         <span class="seal">生</span>
         <h1>学生入口</h1>
-        <div class="sub">第一步：输入你要进的班级码（可随时换）</div>
+        <div class="sub">输入班级码</div>
       </div>
       <input type="password" id="pw" placeholder="班级码" inputmode="numeric" autocomplete="off"
         style="text-align:center;letter-spacing:6px">
-      <div style="text-align:center;font-size:13px;color:#8a7550;margin-top:6px">
-        班级码是数字（如 5 / 245）；口令可以用字母和符号，键盘会自动切回完整键盘
-      </div>
       <button class="btn primary" id="go1" style="margin-top:12px">下一步</button>
       <div id="msg"></div>
-      <div class="quick" id="quick"></div>
     </div>
 
     <!-- 第二步：口令（只有在需要时才出现） -->
@@ -49,7 +44,7 @@
       <div class="head">
         <span class="seal">生</span>
         <h1 id="t2">学生入口</h1>
-        <div class="sub" id="sub2">第二步：输入你的口令（首次使用：口令=你的学号）</div>
+        <div class="sub" id="sub2">输入口令（首次使用＝学号）</div>
       </div>
       <div style="display:flex;gap:8px;align-items:stretch">
         <input type="password" id="spwd" placeholder="口令" autocomplete="off" autocapitalize="off"
@@ -185,11 +180,6 @@ function init() {
       goApp(auto.app);
     };
     $('#autoChange').onclick = () => { bar.style.display = 'none'; $('#pw').focus(); };
-    $('#quick').innerHTML = '当前设备已记住：<b>' + (auto.name || '你') + '</b>，换班级也不用再输口令';
-  } else if (knownPwd()) {
-    $('#quick').innerHTML = '本设备已记住：<b>' + (knownName() || '你') + '</b>，选好班级直接进，不用再输口令';
-  } else {
-    $('#quick').innerHTML = '第一次登录时，口令就是你的学号';
   }
 
   /* ---- 第一步：选班级 ---- */
@@ -215,7 +205,7 @@ function init() {
       $('#msg').textContent = '口令对不上了（可能改过），请重新输一次';
     }
     $('#t2').textContent = clsName(j.cls, app) + ' · 学生入口';
-    $('#sub2').textContent = '第二步：输入你的口令（首次使用：口令=你的学号）';
+
     $('#step1').style.display = 'none';
     $('#step2').style.display = 'block';
     const s2 = $('#spwd'); if (s2) s2.focus();
