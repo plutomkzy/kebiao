@@ -848,6 +848,7 @@ function admKey(el) {
   if (el.dataset.seq) return 'seq:' + el.dataset.seq;
   if (el.dataset.newlead) return 'lead:' + el.dataset.newlead;
   if (el.dataset.rn) return 'rn:' + el.dataset.rn;
+  if (['aCode', 'cWho', 'aLTask', 'cTask'].indexOf(el.id) >= 0) return 'id:' + el.id;
   if (el.dataset.rns) return 'rns:' + el.dataset.rns;
   if (el.dataset.mvcode) return 'mvc:' + el.dataset.mvcode;
   if (el.dataset.mvto) return 'mvt:' + el.dataset.mvto;
@@ -953,11 +954,22 @@ function renderAdmin() {
   h += '</div>';
 
   // 指派组长
-  h += '<div style="margin-top:12px"><h2>指派 / 更换组长</h2><div class="row">' +
+  const mates = ADM.classmates || [];
+  h += '<div style="margin-top:12px"><h2>给某人建队权（他就成了组长）</h2><div class="row">' +
     '<select id="aLTask" class="grow">' + (ADM.tasks || []).map(t => '<option value="' + esc(t.id) + '">' + esc(t.title) + '</option>').join('') + '</select>' +
-    '<input id="aCode" placeholder="学号" style="max-width:120px">' +
-    '<button class="b-orange sm" id="aMake">设为组长（无组则先建组）</button></div>' +
-    '<div class="mut" style="margin-top:4px">给已有队伍换组长：点队伍里的"换组长"；让队长下台：点"队长卸任"。</div></div>';
+    '<select id="aCode" class="grow">' + mates.map(m =>
+      '<option value="' + esc(m.code) + '">' + esc(m.name) + '</option>').join('') + '</select>' +
+    '<button class="b-orange sm" id="aMake">给他建队权</button></div>' +
+    '<div class="mut" style="margin-top:4px">给了之后，他自己就能在建队页面创建队伍并拉人。给已有队伍换队长：点队伍里的"换组长"。</div></div>';
+
+  // 直接替某人把队建好
+  h += '<div style="margin-top:12px"><h2>直接给某人建队（他当队长）</h2><div class="row">' +
+    '<select id="cTask" class="grow">' + (ADM.tasks || []).map(t => '<option value="' + esc(t.id) + '">' + esc(t.title) + '</option>').join('') + '</select>' +
+    '<select id="cWho" class="grow">' + mates.map(m =>
+      '<option value="' + esc(m.code) + '">' + esc(m.name) + '</option>').join('') + '</select>' +
+    '<input id="cName" placeholder="队名（可留空）" style="max-width:130px">' +
+    '<button class="b-green sm" id="cMake">建队</button></div>' +
+    '<div class="mut" style="margin-top:4px">队名留空会自动叫"第N组"；建好后他就能自己拉人。</div></div>';
 
   // 组长资格（可撤销）
   const leads = ADM.leaders || [];
@@ -1044,10 +1056,21 @@ function renderAdmin() {
     if (!confirm('把这个任务里所有未入组的人随机分配（尊重搭档关系、优先已有组长）？')) return null;
     return call('team_autofill', { p_password: ADMPW, p_task: b.dataset.auto });
   });
+  const cm = $('#cMake');
+  if (cm) cm.onclick = async () => {
+    const code = $('#cWho').value;
+    if (!code) { toast('请先选一个人', true); return; }
+    if (!confirm('给这位同学建一支队？他会成为该队队长。')) return;
+    const r = await call('team_admin_create_team', {
+      p_password: ADMPW, p_task: $('#cTask').value, p_code: code,
+      p_name: $('#cName').value.trim(), p_slogan: ''
+    });
+    toast(r.msg || '', !r.ok); refreshNow();
+  };
   const mk = $('#aMake');
   if (mk) mk.onclick = async () => {
-    const code = $('#aCode').value.trim();
-    if (!code) { toast('请输入学号', true); return; }
+    const code = $('#aCode').value;
+    if (!code) { toast('请先选一个人', true); return; }
     const r = await call('team_admin_make_leader', { p_password: ADMPW, p_task: $('#aLTask').value, p_code: code });
     toast(r.msg || '', !r.ok); refreshNow();
   };
