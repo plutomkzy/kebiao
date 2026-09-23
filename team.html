@@ -848,7 +848,7 @@ function admKey(el) {
   if (el.dataset.seq) return 'seq:' + el.dataset.seq;
   if (el.dataset.newlead) return 'lead:' + el.dataset.newlead;
   if (el.dataset.rn) return 'rn:' + el.dataset.rn;
-  if (['aCode', 'cWho', 'aLTask', 'cTask'].indexOf(el.id) >= 0) return 'id:' + el.id;
+  if (['aCode', 'cWho', 'aLTask', 'cTask', 'exTask'].indexOf(el.id) >= 0) return 'id:' + el.id;
   if (el.dataset.rns) return 'rns:' + el.dataset.rns;
   if (el.dataset.mvcode) return 'mvc:' + el.dataset.mvcode;
   if (el.dataset.mvto) return 'mvt:' + el.dataset.mvto;
@@ -1031,6 +1031,15 @@ function renderAdmin() {
   });
   h += '</div>';
 
+  // 导出打印名单
+  h += '<div style="margin-top:12px"><h2>导出名单（给老师打印）</h2>' +
+    '<div class="row">' +
+    '<select id="exTask" class="grow">' + (ADM.tasks || []).map(t =>
+      '<option value="' + esc(t.id) + '">' + esc(t.title) + '</option>').join('') + '</select>' +
+    '<button class="b-green" id="exXls">导出 Excel（大字）</button>' +
+    '</div>' +
+    '<div class="mut" style="margin-top:4px">用 Excel/WPS 打开就能直接打印：A4、每页宽一屏、字号已经放大。</div></div>';
+
   const un = ADM.ungrouped || [];
   h += '<div style="margin-top:12px"><h2>未分组总览（' + un.length + '）</h2>' +
     (un.length ? '<div class="mut">' + un.map(u => esc(u.task_title) + '：' + esc(u.name)).join('　') + '</div>'
@@ -1078,6 +1087,70 @@ function renderAdmin() {
     const code = document.querySelector('[data-newlead="' + b.dataset.setlead + '"]').value;
     return call('team_admin_set_leader', { p_password: ADMPW, p_team: b.dataset.setlead, p_code: code });
   });
+  // ---- 导出 Excel（HTML 表格方式，Excel/WPS 可直接打开并打印）----
+  function exportTask(taskId) {
+    const t = (ADM.tasks || []).find(x => x.id === taskId) || { title: taskId };
+    const teams = (ADM.teams || []).filter(g => g.task_id === taskId)
+      .sort((a, b) => ((a.seq || 999) - (b.seq || 999)));
+    if (!teams.length) { toast('这个任务还没有队伍', true); return; }
+
+    const CN2 = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+    const cn2 = n => { n = parseInt(n, 10); if (!n) return ''; if (n <= 10) return n === 10 ? '十' : CN2[n];
+      if (n < 20) return '十' + CN2[n - 10]; const a = Math.floor(n / 10), b = n % 10; return CN2[a] + '十' + (b ? CN2[b] : ''); };
+    const gname = g => { let base = String(g.name || ''); if (g.seq) base += '（第' + cn2(g.seq) + '组）'; return base; };
+
+    let rows = '';
+    let idx = 0;
+    teams.forEach(g => {
+      (g.members || []).forEach((m, i) => {
+        idx++;
+        rows += '<tr>' +
+          '<td class="c">' + idx + '</td>' +
+          '<td class="c">' + (i === 0 ? esc(gname(g)) : '') + '</td>' +
+          '<td class="c">' + esc(m.name) + '</td>' +
+          '<td class="c code">' + esc(m.code) + '</td>' +
+          '<td class="c">' + (m.role === 'leader' ? '队长' : '') + '</td>' +
+          '</tr>';
+      });
+    });
+
+    const html = '<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8">' +
+      '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>' +
+      '<x:Name>' + esc(t.title) + '</x:Name><x:WorksheetOptions>' +
+      '<x:Print><x:ValidPrinterInfo/><x:PaperSizeIndex>9</x:PaperSizeIndex>' +
+      '<x:Scale>100</x:Scale><x:FitWidth>1</x:FitWidth><x:FitHeight>0</x:FitHeight>' +
+      '<x:HorizontalResolution>600</x:HorizontalResolution></x:Print>' +
+      '<x:Selected/><x:FreezePanes/><x:FrozenNoSplit/>' +
+      '</x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->' +
+      '<style>' +
+      '@page{size:A4 portrait;margin:12mm}' +
+      'table{border-collapse:collapse}' +
+      'td,th{border:1px solid #000;font-family:"SimSun",serif;font-size:16pt;padding:6px 8px;mso-number-format:"\@"}' +
+      'th{font-size:16pt;font-weight:700;background:#efefef}' +
+      'td.c{text-align:center;vertical-align:middle}' +
+      '.title{font-size:22pt;font-weight:700;text-align:center;padding:8px 0}' +
+      '.sub{font-size:13pt;text-align:center;padding-bottom:8px}' +
+      'col.n{width:52px}col.g{width:150px}col.nm{width:210px}col.cd{width:130px}col.rm{width:80px}' +
+      '</style></head><body>' +
+      '<div class="title">汉文24-5班 · ' + esc(t.title) + ' 名单</div>' +
+      '<div class="sub">共 ' + teams.length + ' 组 / ' + idx + ' 人　导出时间 ' +
+      new Date().toLocaleDateString('zh-CN') + '</div>' +
+      '<table><colgroup><col class="n"><col class="g"><col class="nm"><col class="cd"><col class="rm"></colgroup>' +
+      '<tr><th>序号</th><th>小组</th><th>姓名</th><th>学号</th><th>备注</th></tr>' +
+      rows + '</table></body></html>';
+
+    const blob = new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '汉文24-5班-' + t.title + '名单.xls';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+    toast('已生成 ' + t.title + ' 名单，用 Excel 打开即可打印');
+  }
+  const exb = $('#exXls');
+  if (exb) exb.onclick = () => exportTask($('#exTask').value);
+
   wire('[data-renum]', b => call('team_admin_renumber', { p_password: ADMPW, p_task: b.dataset.renum }));
   wire('[data-saveseq]', b => {
     const el = document.querySelector('[data-seq="' + b.dataset.saveseq + '"]');
