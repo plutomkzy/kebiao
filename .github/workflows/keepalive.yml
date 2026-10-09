@@ -1,0 +1,34 @@
+# Supabase 免费版保活：每 3 天自动访问一次接口，项目就不会被判定"闲置 7 天"而暂停。
+#
+# 用法（在 GitHub 网页上操作，不用装任何东西）：
+#   1) 打开仓库 kebiao → Add file → Create new file
+#   2) 文件名填：.github/workflows/keepalive.yml
+#   3) 把本文件内容整个粘进去 → Commit changes
+#   4) 到仓库的 Actions 标签页，能看到 "keep-supabase-awake" 就成功了
+#      （点进去还能手动 Run workflow 立刻试一次）
+#
+# 说明：用的是网站里公开的 anon key（本来就在 config.js 里，不算泄密）；
+#      GitHub 定时任务偶尔会延迟几分钟到几十分钟，属正常。
+
+name: keep-supabase-awake
+
+on:
+  schedule:
+    - cron: '0 2 */3 * *'      # 每 3 天（UTC 02:00 = 北京时间 10:00）
+  workflow_dispatch:            # 支持手动点一下立刻运行
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase (any API request counts as activity)
+        run: |
+          echo "ping at $(date -u)"
+          curl -sS --max-time 30 -X POST \
+            "https://xjgfladfzhptlhljgmzi.supabase.co/rest/v1/rpc/enter" \
+            -H "apikey: sb_publishable_rUVeg87X14Iv7ujiOb7yTA_U9Ut431x" \
+            -H "Authorization: Bearer sb_publishable_rUVeg87X14Iv7ujiOb7yTA_U9Ut431x" \
+            -H "Content-Type: application/json" \
+            -d '{"p_password":"5"}' | head -c 200
+          echo ""
+          echo "done"
